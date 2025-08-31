@@ -1,24 +1,20 @@
-//
-//  ContentView.swift
-//  MoneyTracker
-//
-//  Created by Mattia Di Donato on 15/08/25.
-//
-
 import SwiftUI
 
 struct ContentView: View {
+    // Stati principali dell'app
+    @StateObject private var expenseManager = ExpenseManager()
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        NavigationView {
+            HomeView()
+                .environmentObject(expenseManager)
         }
-        .padding()
     }
 }
 
-#Preview {
-    ContentView()
+// Preview per ContentView
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
 }
