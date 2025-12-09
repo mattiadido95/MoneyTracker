@@ -44,7 +44,7 @@
 import SwiftUI
 
 struct CategoriesSection: View {
-    let categorie: [CategoriaSpesa]
+    @EnvironmentObject var expenseManager: ExpenseManager
     let totaleMensile: Double
     
     var body: some View {
@@ -56,16 +56,23 @@ struct CategoriesSection: View {
                 
                 Spacer()
                 
-                Button("Vedi Tutto") {
-                    print("Vedi tutto categorie tapped")
+                if !expenseManager.categorieSpese.isEmpty {
+                    NavigationLink {
+                        ExpenseListView()
+                            .environmentObject(expenseManager)
+                    } label: {
+                        Text("Vedi Tutto")
+                            .font(.caption)
+                    }
                 }
-                .font(.caption)
-                .foregroundColor(.blue)
             }
             
             VStack(spacing: 8) {
-                ForEach(categorie, id: \.nome) { categoria in
+                ForEach(expenseManager.categorieSpese) { categoria in
                     CategoryRow(categoria: categoria, totale: totaleMensile)
+                }
+                .onDelete { indexSet in
+                    expenseManager.rimuoviSpese(at: indexSet)
                 }
             }
             .padding()
@@ -75,5 +82,14 @@ struct CategoriesSection: View {
                     .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 1)
             )
         }
+    }
+}
+
+// MARK: - Preview
+struct CategoriesSection_Previews: PreviewProvider {
+    static var previews: some View {
+        CategoriesSection(totaleMensile: 1250.50)
+            .environmentObject(ExpenseManager())
+            .padding()
     }
 }

@@ -65,9 +65,20 @@ struct ContentView: View {
 }
 
 // MARK: - SwiftUI Previews
-// Preview per ContentView - utilizzato in fase di sviluppo per vedere l'anteprima
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView()
+        ContentView_PreviewWrapper()
+    }
+}
+
+/// Wrapper per preview con dati mock
+private struct ContentView_PreviewWrapper: View {
+    @StateObject private var expenseManager = ExpenseManager(mockData: true)
+    
+    var body: some View {
+        NavigationView {
+            HomeView()
+                .environmentObject(expenseManager)
+        }
     }
 }

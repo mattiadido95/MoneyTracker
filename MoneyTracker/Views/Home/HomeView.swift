@@ -61,6 +61,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject var expenseManager: ExpenseManager
+    @State private var showingAddExpense = false
     
     var body: some View {
         ScrollView {
@@ -74,8 +75,7 @@ struct HomeView: View {
                 
                 // Add expense button component
                 AddExpenseButton {
-                    // Navigazione alla schermata di aggiunta
-                    print("Navigate to add expense")
+                    showingAddExpense = true
                 }
                 
                 // Summary cards component
@@ -87,10 +87,7 @@ struct HomeView: View {
                 )
                 
                 // Categories section component
-                CategoriesSection(
-                    categorie: expenseManager.categorieSpese,
-                    totaleMensile: expenseManager.totaleMensile
-                )
+                CategoriesSection(totaleMensile: expenseManager.totaleMensile)
                 
                 Spacer(minLength: 20)
             }
@@ -99,5 +96,27 @@ struct HomeView: View {
         .navigationTitle("Dashboard Spese")
         .navigationBarTitleDisplayMode(.large)
         .background(Color(.systemGroupedBackground))
+        .sheet(isPresented: $showingAddExpense) {
+            AddExpenseView()
+        }
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Menu {
+                    Button(action: {
+                        expenseManager.mostraInfoFile()
+                    }) {
+                        Label("Info File", systemImage: "info.circle")
+                    }
+                    
+                    Button(role: .destructive, action: {
+                        expenseManager.resetDati()
+                    }) {
+                        Label("Reset Dati", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+            }
+        }
     }
 }

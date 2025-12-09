@@ -13,31 +13,88 @@
  CONCETTI SWIFT UTILIZZATI:
  • struct: Tipo di valore (value type) - quando assegni una struct a un'altra variabile, 
    viene creata una copia completa
- • let: Proprietà immutabili - una volta assegnate non possono essere modificate
- • init: Costruttore personalizzato per inizializzare le proprietà della struct
- • SwiftUI.Color: Tipo specifico di SwiftUI per gestire i colori nell'interfaccia
+ • Codable: Protocollo che permette serializzazione automatica in JSON
+ • Identifiable: Protocollo che richiede un id univoco per SwiftUI lists
+ • UUID: Identificatore univoco universale per ogni spesa
+ • Date: Timestamp per tracciare quando è stata registrata la spesa
+ • Computed property: colore viene calcolato da coloreNome
+ • Extension: Aggiunge funzionalità a Color per conversione String
  
  FUNZIONALITÀ:
  - Rappresenta una singola categoria di spesa (es: Luce, Gas, Acqua)
- - Memorizza nome, importo e colore associato per l'identificazione visiva
- - Utilizzata in tutta l'app per organizzare e visualizzare le spese per categoria
+ - Memorizza nome, importo, colore e data
+ - Serializzabile in JSON per persistenza
+ - Identificabile univocamente per SwiftUI
  
  UTILIZZO NEL PROGETTO:
  - ExpenseManager la usa negli array per memorizzare le categorie
  - CategoryRow la usa per visualizzare ogni singola riga nella lista
- - I colori vengono usati per creare elementi grafici distintivi nell'UI
+ - PersistenceManager la salva/carica da JSON
 */
 
 import SwiftUI
 
-struct CategoriaSpesa {
+struct CategoriaSpesa: Codable, Identifiable {
+    let id: UUID
     let nome: String
     let importo: Double
-    let colore: SwiftUI.Color
+    let data: Date
     
-    init(nome: String, importo: Double, colore: SwiftUI.Color) {
+    // Colore serializzato come stringa (es: "blue", "red")
+    // I Color non possono essere serializzati direttamente in JSON
+    private let coloreNome: String
+    
+    // Computed property per ottenere il Color SwiftUI
+    var colore: Color {
+        get { Color.fromString(coloreNome) }
+    }
+    
+    init(id: UUID = UUID(), nome: String, importo: Double, colore: Color, data: Date = Date()) {
+        self.id = id
         self.nome = nome
         self.importo = importo
-        self.colore = colore
+        self.coloreNome = colore.toString()
+        self.data = data
+    }
+    
+    // CodingKeys per serializzazione JSON
+    enum CodingKeys: String, CodingKey {
+        case id, nome, importo, data, coloreNome
+    }
+}
+
+// MARK: - Color Extension per serializzazione
+
+extension Color {
+    /// Converte Color in String per salvataggio JSON
+    func toString() -> String {
+        switch self {
+        case .red: return "red"
+        case .blue: return "blue"
+        case .green: return "green"
+        case .yellow: return "yellow"
+        case .orange: return "orange"
+        case .purple: return "purple"
+        case .pink: return "pink"
+        case .cyan: return "cyan"
+        case .indigo: return "indigo"
+        default: return "blue" // fallback
+        }
+    }
+    
+    /// Converte String in Color per caricamento JSON
+    static func fromString(_ string: String) -> Color {
+        switch string.lowercased() {
+        case "red": return .red
+        case "blue": return .blue
+        case "green": return .green
+        case "yellow": return .yellow
+        case "orange": return .orange
+        case "purple": return .purple
+        case "pink": return .pink
+        case "cyan": return .cyan
+        case "indigo": return .indigo
+        default: return .blue
+        }
     }
 }
