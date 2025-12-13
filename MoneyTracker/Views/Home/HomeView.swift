@@ -62,32 +62,15 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject var expenseManager: ExpenseManager
     @State private var showingAddExpense = false
+    @State private var showingExportSheet = false
+    @State private var showingImportPicker = false
+    @State private var exportFileURL: URL?
+    @State private var alertItem: ImportExportAlert?
     
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                
-                // Header component
-                HeaderCard(
-                    totaleMensile: expenseManager.totaleMensile,
-                    totaleAnno: expenseManager.totaleAnno
-                )
-                
-                // Add expense button component
-                AddExpenseButton {
-                    showingAddExpense = true
-                }
-                
-                // Summary cards component
-                SummaryCardsGrid(
-                    totaleAnno: expenseManager.totaleAnno,
-                    prossimaScadenza: expenseManager.prossimaScadenza,
-                    numeroBolletteMese: expenseManager.numeroBolletteMese,
-                    mediaMensile: expenseManager.mediaMensile
-                )
-                
-                // Categories section component
-                CategoriesSection(totaleMensile: expenseManager.totaleMensile)
+                dashboardContent
                 
                 Spacer(minLength: 20)
             }
@@ -99,24 +82,162 @@ struct HomeView: View {
         .sheet(isPresented: $showingAddExpense) {
             AddExpenseView()
         }
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
-                    Button(action: {
-                        expenseManager.mostraInfoFile()
-                    }) {
-                        Label("Info File", systemImage: "info.circle")
-                    }
-                    
-                    Button(role: .destructive, action: {
-                        expenseManager.resetDati()
-                    }) {
-                        Label("Reset Dati", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
+        .sheet(isPresented: $showingExportSheet) {
+            if let fileURL = exportFileURL {
+                ActivityViewController(activityItems: [fileURL]) {
+                    alertItem = .success("File esportato con successo!")
                 }
             }
         }
+        .sheet(isPresented: $showingImportPicker) {
+            DocumentPicker(isPresented: $showingImportPicker, onFilePicked: handleImport)
+        }
+        .alert(item: $alertItem) { alert in
+            Alert(
+                title: Text(alert.title),
+                message: Text(alert.message),
+                dismissButton: .default(Text("OK"))
+            )
+        }
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                menuButton
+            }
+        }
+    }
+    
+    // MARK: - Dashboard Content
+    
+    @ViewBuilder
+    private var dashboardContent: some View {
+        // Header component
+        HeaderCard(
+            totaleMensile: expenseManager.totaleMensile,
+            totaleAnno: expenseManager.totaleAnno
+        )
+        
+        // Add expense button component
+        AddExpenseButton {
+            showingAddExpense = true
+        }
+        
+        // Summary cards component
+        SummaryCardsGrid(
+            totaleAnno: expenseManager.totaleAnno,
+            prossimaScadenza: expenseManager.prossimaScadenza,
+            numeroBolletteMese: expenseManager.numeroBolletteMese,
+            mediaMensile: expenseManager.mediaMensile
+        )
+        
+        // Statistics button
+        NavigationLink {
+            StatisticsView()
+                .environmentObject(expenseManager)
+        } label: {
+            HStack {
+                Image(systemName: "chart.bar.fill")
+                    .font(.title2)
+                
+                Text("Vedi Statistiche e Grafici")
+                    .font(.headline)
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.7))
+            }
+            .foregroundColor(.white)
+            .padding()
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [.green, .green.opacity(0.8)]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(12)
+            .shadow(color: .green.opacity(0.3), radius: 5, x: 0, y: 2)
+        }
+        .buttonStyle(PlainButtonStyle())
+        
+        // Categories section component
+        CategoriesSection(totaleMensile: expenseManager.totaleMensile)
+    }
+    
+    // MARK: - Computed Views
+    
+    private var menuButton: some View {
+        Menu {
+            Section("Backup & Sincronizzazione") {
+                Button(action: handleExport) {
+                    Label("Esporta Dati", systemImage: "square.and.arrow.up")
+                }
+                
+                Button(action: { showingImportPicker = true }) {
+                    Label("Importa Dati", systemImage: "square.and.arrow.down")
+                }
+            }
+            
+            Section("Debug") {
+                Button(action: {
+                    expenseManager.mostraInfoFile()
+                }) {
+                    Label("Info File", systemImage: "info.circle")
+                }
+                
+                Button(role: .destructive, action: {
+                    expenseManager.resetDati()
+                }) {
+                    Label("Reset Dati", systemImage: "trash")
+                }
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+    }
+    
+    // MARK: - Export/Import Methods
+    
+    /// Gestisce l'export dei dati
+    private func handleExport() {
+        do {
+            // Esporta i dati e ottieni l'URL del file temporaneo
+            let fileURL = try expenseManager.exportData()
+            
+            // Salva l'URL e mostra lo share sheet
+            exportFileURL = fileURL
+            showingExportSheet = true
+            
+            print("✅ Export preparato, mostro share sheet")
+        } catch {
+            // Mostra errore
+            alertItem = .error("Impossibile esportare i dati: \(error.localizedDescription)")
+            print("❌ Errore export: \(error)")
+        }
+    }
+    
+    /// Gestisce l'import dei dati da un file
+    /// - Parameter fileURL: URL del file JSON da importare
+    private func handleImport(from fileURL: URL) {
+        do {
+            // Importa e unisci i dati
+            let addedCount = try expenseManager.importData(from: fileURL)
+            
+            // Mostra risultato
+            if addedCount > 0 {
+                alertItem = .success("Import completato! \(addedCount) spese aggiunte.")
+            } else {
+                alertItem = .success("Import completato! Nessuna nuova spesa (tutte già presenti).")
+            }
+            
+            print("✅ Import completato: \(addedCount) spese aggiunte")
+        } catch {
+            // Mostra errore
+            alertItem = .error("Impossibile importare i dati: \(error.localizedDescription)")
+            print("❌ Errore import: \(error)")
+        }
     }
 }
+
+

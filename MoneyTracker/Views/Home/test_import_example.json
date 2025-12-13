@@ -1,0 +1,44 @@
+[
+  {
+    "id": "F1234567-89AB-CDEF-0123-456789ABCDEF",
+    "nome": "Affitto",
+    "importo": 850.00,
+    "data": "2024-12-01T09:00:00Z",
+    "coloreNome": "purple"
+  },
+  {
+    "id": "F2234567-89AB-CDEF-0123-456789ABCDEF",
+    "nome": "Luce",
+    "importo": 95.50,
+    "data": "2024-12-05T10:30:00Z",
+    "coloreNome": "yellow"
+  },
+  {
+    "id": "F3234567-89AB-CDEF-0123-456789ABCDEF",
+    "nome": "Gas",
+    "importo": 142.30,
+    "data": "2024-12-08T14:15:00Z",
+    "coloreNome": "blue"
+  },
+  {
+    "id": "F4234567-89AB-CDEF-0123-456789ABCDEF",
+    "nome": "Internet",
+    "importo": 29.90,
+    "data": "2024-12-10T16:45:00Z",
+    "coloreNome": "cyan"
+  },
+  {
+    "id": "F5234567-89AB-CDEF-0123-456789ABCDEF",
+    "nome": "Acqua",
+    "importo": 35.20,
+    "data": "2024-12-12T11:20:00Z",
+    "coloreNome": "indigo"
+  },
+  {
+    "id": "F6234567-89AB-CDEF-0123-456789ABCDEF",
+    "nome": "Spazzatura",
+    "importo": 18.50,
+    "data": "2024-12-13T08:00:00Z",
+    "coloreNome": "green"
+  }
+]

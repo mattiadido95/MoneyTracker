@@ -34,9 +34,22 @@
 		49E37CFB2EE6092E00B1BF1D /* RIMOZIONE_MOCK_COMPLETATA.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = RIMOZIONE_MOCK_COMPLETATA.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		49E77FCB2EED7193007D546D /* Exceptions for "MoneyTracker" folder in "MoneyTracker" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Views/Home/ExportImportManager.swift,
+			);
+			target = 4963D7702E4FAB1D00C3E6C5 /* MoneyTracker */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		4963D7732E4FAB1D00C3E6C5 /* MoneyTracker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				49E77FCB2EED7193007D546D /* Exceptions for "MoneyTracker" folder in "MoneyTracker" target */,
+			);
 			path = MoneyTracker;
 			sourceTree = "<group>";
 		};
@@ -404,6 +417,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = WL4C644YVH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Money Tracker";
@@ -432,6 +446,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = WL4C644YVH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Money Tracker";

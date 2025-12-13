@@ -239,4 +239,32 @@ class ExpenseManager: ObservableObject {
     func mostraInfoFile() {
         print(PersistenceManager.fileInfo())
     }
+    
+    // MARK: - Export/Import Methods
+    
+    /// Esporta i dati correnti in un file JSON
+    /// - Returns: URL del file temporaneo da condividere
+    func exportData() throws -> URL {
+        return try ExportImportManager.exportData(categorieSpese)
+    }
+    
+    /// Importa e unisce dati da un file JSON
+    /// - Parameter fileURL: URL del file JSON da importare
+    /// - Returns: Numero di spese aggiunte
+    func importData(from fileURL: URL) throws -> Int {
+        let importedExpenses = try ExportImportManager.importData(from: fileURL)
+        let countBefore = categorieSpese.count
+        
+        // Merge con dati esistenti (evita duplicati per ID)
+        categorieSpese = ExportImportManager.mergeExpenses(
+            imported: importedExpenses,
+            existing: categorieSpese
+        )
+        
+        let countAfter = categorieSpese.count
+        let addedCount = countAfter - countBefore
+        
+        print("📥 Import completato: \(addedCount) nuove spese aggiunte")
+        return addedCount
+    }
 }

@@ -101,13 +101,14 @@ struct StatisticsView: View {
         formatter.dateFormat = "MMM"
         formatter.locale = Locale(identifier: "it_IT")
         
-        return grouped.map { components, expenses in
+        return grouped.compactMap { components, expenses -> (String, Double, Date)? in
             let total = expenses.reduce(0) { $0 + $1.importo }
-            let date = calendar.date(from: components) ?? Date()
+            guard let date = calendar.date(from: components) else { return nil }
             let monthName = formatter.string(from: date)
-            return (monthName, total)
+            return (monthName, total, date)
         }
-        .sorted { calendar.date(from: $0.0, format: "MMM") ?? Date() < calendar.date(from: $1.0, format: "MMM") ?? Date() }
+        .sorted { $0.2 < $1.2 }  // Ordina per data (terzo elemento della tupla)
+        .map { ($0.0, $0.1) }     // Ritorna solo nome mese e importo
     }
     
     /// Totale periodo
