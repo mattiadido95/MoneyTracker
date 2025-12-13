@@ -39,6 +39,8 @@
 */
 
 import SwiftUI
+
+#if os(iOS)
 import UIKit
 
 struct ActivityViewController: UIViewControllerRepresentable {
@@ -92,3 +94,23 @@ struct ActivityViewController: UIViewControllerRepresentable {
         }
     }
 }
+#elseif os(macOS)
+// Su macOS, ActivityViewController non serve
+// Usiamo NSSharingServicePicker o SwiftUI nativo
+struct ActivityViewController: View {
+    let activityItems: [Any]
+    let onComplete: (() -> Void)?
+    
+    init(activityItems: [Any], onComplete: (() -> Void)? = nil) {
+        self.activityItems = activityItems
+        self.onComplete = onComplete
+    }
+    
+    var body: some View {
+        // Su Mac, ShareLink gestisce tutto
+        Text("Usa ShareLink su macOS")
+            .hidden()
+    }
+}
+#endif
+

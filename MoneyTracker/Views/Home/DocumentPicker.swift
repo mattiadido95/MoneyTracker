@@ -39,6 +39,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+#if os(iOS)
 struct DocumentPicker: UIViewControllerRepresentable {
     @Binding var isPresented: Bool
     let onFilePicked: (URL) -> Void
@@ -93,3 +94,41 @@ struct DocumentPicker: UIViewControllerRepresentable {
         }
     }
 }
+#elseif os(macOS)
+// Su macOS usiamo NSOpenPanel (nativo Mac)
+import AppKit
+
+struct DocumentPicker: NSViewRepresentable {
+    @Binding var isPresented: Bool
+    let onFilePicked: (URL) -> Void
+    
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        
+        DispatchQueue.main.async {
+            let panel = NSOpenPanel()
+            panel.allowedContentTypes = [.json]
+            panel.allowsMultipleSelection = false
+            panel.canChooseDirectories = false
+            panel.canCreateDirectories = false
+            
+            panel.begin { response in
+                if response == .OK, let url = panel.url {
+                    print("📁 File selezionato: \(url.lastPathComponent)")
+                    onFilePicked(url)
+                } else {
+                    print("❌ Selezione file annullata")
+                }
+                isPresented = false
+            }
+        }
+        
+        return view
+    }
+    
+    func updateNSView(_ nsView: NSView, context: Context) {
+        // Non serve aggiornare
+    }
+}
+#endif
+

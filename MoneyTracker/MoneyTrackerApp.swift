@@ -71,5 +71,16 @@ struct MoneyTrackerApp: App {
         WindowGroup {
             ContentView()  // Vista radice dell'app
         }
+        #if targetEnvironment(macCatalyst)
+        .defaultSize(width: 1000, height: 700)  // Dimensione iniziale su Mac
+        .commands {
+            // Aggiungi comandi Mac-specific se servono in futuro
+            CommandGroup(replacing: .help) {
+                Button("MoneyTracker Help") {
+                    // Apri help
+                }
+            }
+        }
+        #endif
     }
 }
