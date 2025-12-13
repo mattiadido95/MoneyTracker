@@ -76,7 +76,7 @@ struct SummaryCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
+                .fill(Color.systemBackground)
                 .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 1)
         )
     }

@@ -88,77 +88,113 @@ struct AddExpenseView: View {
     
     var body: some View {
         NavigationView {
-            Form {
-                Section(header: Text("Informazioni Spesa")) {
-                    TextField("Nome categoria (es: Luce)", text: $nome)
+            #if os(macOS)
+            HStack(spacing: 0) {
+                Spacer()
+                formContent
+                    .frame(width: 550)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            #else
+            formContent
+            #endif
+        }
+        #if os(macOS)
+        .frame(width: 750, height: 650)
+        #endif
+    }
+    
+    // MARK: - Form Content
+    
+    @ViewBuilder
+    private var formContent: some View {
+        Form {
+            Section(header: Text("Informazioni Spesa")) {
+                TextField("Nome categoria (es: Luce)", text: $nome)
+                    .focused($isFocused)
+                
+                HStack {
+                    Text("€")
+                        .foregroundColor(.secondary)
+                    TextField("Importo (es: 89.50)", text: $importoText)
+                        #if os(iOS)
+                        .keyboardType(.decimalPad)
+                        #endif
                         .focused($isFocused)
-                    
-                    HStack {
-                        Text("€")
-                            .foregroundColor(.secondary)
-                        TextField("Importo (es: 89.50)", text: $importoText)
-                            .keyboardType(.decimalPad)
-                            .focused($isFocused)
-                    }
-                    
-                    if let importo = importoDouble {
-                        Text("Importo: €\(String(format: "%.2f", importo))")
-                            .font(.caption)
-                            .foregroundColor(.green)
-                    } else if !importoText.isEmpty {
-                        Text("Importo non valido")
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    }
                 }
                 
-                Section(header: Text("Data e Aspetto")) {
-                    DatePicker(
-                        "Data",
-                        selection: $data,
-                        displayedComponents: .date
-                    )
-                    
-                    ColorPicker("Colore categoria", selection: $selectedColor)
-                    
-                    // Preview del colore
+                if let importo = importoDouble {
+                    Text("Importo: €\(String(format: "%.2f", importo))")
+                        .font(.caption)
+                        .foregroundColor(.green)
+                } else if !importoText.isEmpty {
+                    Text("Importo non valido")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
+            }
+            
+            Section(header: Text("Data e Aspetto")) {
+                DatePicker(
+                    "Data",
+                    selection: $data,
+                    displayedComponents: .date
+                )
+                
+                ColorPicker("Colore categoria", selection: $selectedColor)
+                
+                // Preview del colore
+                HStack {
+                    Text("Anteprima")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(selectedColor)
+                        .frame(width: 50, height: 30)
+                }
+            }
+            
+            Section {
+                Button(action: salvaSpesa) {
                     HStack {
-                        Text("Anteprima")
-                            .foregroundColor(.secondary)
                         Spacer()
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(selectedColor)
-                            .frame(width: 50, height: 30)
+                        Text("Salva Spesa")
+                            .fontWeight(.semibold)
+                        Spacer()
                     }
                 }
-                
-                Section {
-                    Button(action: salvaSpesa) {
-                        HStack {
-                            Spacer()
-                            Text("Salva Spesa")
-                                .fontWeight(.semibold)
-                            Spacer()
-                        }
-                    }
-                    .disabled(!isFormValid)
+                .disabled(!isFormValid)
+            }
+        }
+        .navigationTitle("Nuova Spesa")
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #elseif os(macOS)
+        .formStyle(.grouped)
+        #endif
+        .toolbar {
+            #if os(iOS)
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button("Annulla") {
+                    dismiss()
                 }
             }
-            .navigationTitle("Nuova Spesa")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Annulla") {
-                        dismiss()
-                    }
-                }
-                
-                ToolbarItem(placement: .keyboard) {
-                    Button("Fine") {
-                        isFocused = false
-                    }
+            #else
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Annulla") {
+                    dismiss()
                 }
             }
+            #endif
+            
+            #if os(iOS)
+            ToolbarItem(placement: .keyboard) {
+                Button("Fine") {
+                    isFocused = false
+                }
+            }
+            #endif
         }
     }
     

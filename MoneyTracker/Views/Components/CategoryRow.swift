@@ -47,6 +47,7 @@ import SwiftUI
 struct CategoryRow: View {
     let categoria: CategoriaSpesa
     let totale: Double
+    var onDelete: (() -> Void)? = nil
     
     var percentuale: Double {
         (categoria.importo / totale) * 100
@@ -74,7 +75,28 @@ struct CategoryRow: View {
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .foregroundColor(categoria.colore)
+            
+            #if os(macOS)
+            // Pulsante delete per macOS
+            if let onDelete = onDelete {
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .foregroundColor(.red)
+                }
+                .buttonStyle(.plain)
+                .help("Elimina spesa")
+            }
+            #endif
         }
         .padding(.vertical, 4)
+        #if os(macOS)
+        .contextMenu {
+            if let onDelete = onDelete {
+                Button(role: .destructive, action: onDelete) {
+                    Label("Elimina", systemImage: "trash")
+                }
+            }
+        }
+        #endif
     }
 }

@@ -75,10 +75,15 @@ struct HomeView: View {
                 Spacer(minLength: 20)
             }
             .padding(.horizontal, 16)
+            #if os(macOS)
+            .padding(.vertical, 20)
+            #endif
         }
         .navigationTitle("Dashboard Spese")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
-        .background(Color(.systemGroupedBackground))
+        #endif
+        .background(Color.systemGroupedBackground)
         .sheet(isPresented: $showingAddExpense) {
             AddExpenseView()
         }
@@ -100,9 +105,15 @@ struct HomeView: View {
             )
         }
         .toolbar {
+            #if os(iOS)
             ToolbarItem(placement: .navigationBarTrailing) {
                 menuButton
             }
+            #else
+            ToolbarItem(placement: .automatic) {
+                menuButton
+            }
+            #endif
         }
     }
     

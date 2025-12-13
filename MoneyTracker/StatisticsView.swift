@@ -145,11 +145,19 @@ struct StatisticsView: View {
             .padding(.horizontal, 16)
         }
         .navigationTitle("Statistiche")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
+        #endif
         .toolbar {
+            #if os(iOS)
             ToolbarItem(placement: .navigationBarTrailing) {
                 periodFilterMenu
             }
+            #else
+            ToolbarItem(placement: .automatic) {
+                periodFilterMenu
+            }
+            #endif
         }
     }
     
@@ -382,7 +390,7 @@ struct StatCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
+                .fill(Color.systemBackground)
                 .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 1)
         )
     }
@@ -409,7 +417,7 @@ struct ChartCard<Content: View>: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
+                .fill(Color.systemBackground)
                 .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 1)
         )
     }

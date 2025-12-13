@@ -57,10 +57,29 @@ struct ContentView: View {
     @StateObject private var expenseManager = ExpenseManager()
     
     var body: some View {
-        NavigationView {
+        #if os(macOS)
+        // Su macOS, usa NavigationStack con frame minimo per evitare compressione
+        NavigationStack {
             HomeView()
-                .environmentObject(expenseManager)  // Inietta in tutte le view figlie
+                .environmentObject(expenseManager)
         }
+        .frame(minWidth: 900, idealWidth: 1200, maxWidth: .infinity,
+               minHeight: 700, idealHeight: 800, maxHeight: .infinity)
+        #else
+        // Su iOS, usa NavigationStack (o NavigationView per compatibilità con iOS 15)
+        if #available(iOS 16.0, *) {
+            NavigationStack {
+                HomeView()
+                    .environmentObject(expenseManager)
+            }
+        } else {
+            NavigationView {
+                HomeView()
+                    .environmentObject(expenseManager)
+            }
+            .navigationViewStyle(.stack)
+        }
+        #endif
     }
 }
 
@@ -76,9 +95,26 @@ private struct ContentView_PreviewWrapper: View {
     @StateObject private var expenseManager = ExpenseManager(mockData: true)
     
     var body: some View {
-        NavigationView {
+        #if os(macOS)
+        NavigationStack {
             HomeView()
                 .environmentObject(expenseManager)
         }
+        .frame(minWidth: 900, idealWidth: 1200, maxWidth: .infinity,
+               minHeight: 700, idealHeight: 800, maxHeight: .infinity)
+        #else
+        if #available(iOS 16.0, *) {
+            NavigationStack {
+                HomeView()
+                    .environmentObject(expenseManager)
+            }
+        } else {
+            NavigationView {
+                HomeView()
+                    .environmentObject(expenseManager)
+            }
+            .navigationViewStyle(.stack)
+        }
+        #endif
     }
 }

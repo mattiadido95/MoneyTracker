@@ -181,17 +181,27 @@ struct ExpenseListView: View {
                     .padding(.vertical, 40)
                 } else {
                     ForEach(sortedExpenses) { spesa in
-                        ExpenseRowFull(spesa: spesa)
+                        ExpenseRowFull(
+                            spesa: spesa,
+                            onDelete: {
+                                expenseManager.rimuoviSpesa(spesa)
+                            }
+                        )
                     }
+                    #if os(iOS)
                     .onDelete { indexSet in
                         deleteExpenses(at: indexSet)
                     }
+                    #endif
                 }
             }
         }
         .navigationTitle("Tutte le Spese")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
+        #endif
         .toolbar {
+            #if os(iOS)
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
                     // Sezione Filtri
@@ -221,6 +231,37 @@ struct ExpenseListView: View {
                     Image(systemName: "line.3.horizontal.decrease.circle")
                 }
             }
+            #else
+            ToolbarItem(placement: .automatic) {
+                Menu {
+                    // Sezione Filtri
+                    Section("Filtra per") {
+                        ForEach(FilterOption.allCases, id: \.self) { option in
+                            Button(action: { filterOption = option }) {
+                                Label(
+                                    option.rawValue,
+                                    systemImage: option == filterOption ? "checkmark" : option.icon
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Sezione Ordinamento
+                    Section("Ordina per") {
+                        ForEach(SortOption.allCases, id: \.self) { option in
+                            Button(action: { sortOption = option }) {
+                                Label(
+                                    option.rawValue,
+                                    systemImage: option == sortOption ? "checkmark" : option.icon
+                                )
+                            }
+                        }
+                    }
+                } label: {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                }
+            }
+            #endif
         }
     }
     
@@ -241,6 +282,7 @@ struct ExpenseListView: View {
 
 struct ExpenseRowFull: View {
     let spesa: CategoriaSpesa
+    var onDelete: (() -> Void)? = nil
     
     private var formattedDate: String {
         let formatter = DateFormatter()
@@ -298,8 +340,29 @@ struct ExpenseRowFull: View {
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
+            
+            #if os(macOS)
+            // Pulsante delete per macOS
+            if let onDelete = onDelete {
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .foregroundColor(.red)
+                }
+                .buttonStyle(.plain)
+                .help("Elimina spesa")
+            }
+            #endif
         }
         .padding(.vertical, 4)
+        #if os(macOS)
+        .contextMenu {
+            if let onDelete = onDelete {
+                Button(role: .destructive, action: onDelete) {
+                    Label("Elimina", systemImage: "trash")
+                }
+            }
+        }
+        #endif
     }
 }
 

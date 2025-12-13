@@ -69,16 +69,24 @@ struct CategoriesSection: View {
             
             VStack(spacing: 8) {
                 ForEach(expenseManager.categorieSpese) { categoria in
-                    CategoryRow(categoria: categoria, totale: totaleMensile)
+                    CategoryRow(
+                        categoria: categoria,
+                        totale: totaleMensile,
+                        onDelete: {
+                            expenseManager.rimuoviSpesa(categoria)
+                        }
+                    )
                 }
+                #if os(iOS)
                 .onDelete { indexSet in
                     expenseManager.rimuoviSpese(at: indexSet)
                 }
+                #endif
             }
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemBackground))
+                    .fill(Color.systemBackground)
                     .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 1)
             )
         }
