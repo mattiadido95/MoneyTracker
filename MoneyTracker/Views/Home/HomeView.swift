@@ -64,6 +64,7 @@ struct HomeView: View {
     @State private var showingAddExpense = false
     @State private var showingExportSheet = false
     @State private var showingImportPicker = false
+    @State private var showingBankImport = false
     @State private var exportFileURL: URL?
     @State private var alertItem: ImportExportAlert?
     
@@ -96,6 +97,10 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showingImportPicker) {
             DocumentPicker(isPresented: $showingImportPicker, onFilePicked: handleImport)
+        }
+        .sheet(isPresented: $showingBankImport) {
+            BankImportView()
+                .environmentObject(expenseManager)
         }
         .alert(item: $alertItem) { alert in
             Alert(
@@ -172,6 +177,35 @@ struct HomeView: View {
         }
         .buttonStyle(PlainButtonStyle())
         
+        // Bank Import button
+        Button(action: { showingBankImport = true }) {
+            HStack {
+                Image(systemName: "doc.text.fill")
+                    .font(.title2)
+                
+                Text("Importa Estratto Conto Bancario")
+                    .font(.headline)
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.7))
+            }
+            .foregroundColor(.white)
+            .padding()
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [.blue, .blue.opacity(0.8)]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(12)
+            .shadow(color: .blue.opacity(0.3), radius: 5, x: 0, y: 2)
+        }
+        .buttonStyle(PlainButtonStyle())
+        
         // Categories section component
         CategoriesSection(totaleMensile: expenseManager.totaleMensile)
     }
@@ -187,6 +221,12 @@ struct HomeView: View {
                 
                 Button(action: { showingImportPicker = true }) {
                     Label("Importa Dati", systemImage: "square.and.arrow.down")
+                }
+            }
+            
+            Section("Importazione Banca") {
+                Button(action: { showingBankImport = true }) {
+                    Label("Importa Estratto Conto", systemImage: "doc.text.fill")
                 }
             }
             
