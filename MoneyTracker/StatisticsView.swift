@@ -272,9 +272,10 @@ struct StatisticsView: View {
     }
     
     /// Grafico a torta per distribuzione
+    /// Grafico a torta — protetto contro divisione per zero quando totalPeriod == 0
     private var distributionPieChart: some View {
         ChartCard(title: "Distribuzione per Categoria") {
-            if expensesByCategory.isEmpty {
+            if expensesByCategory.isEmpty || totalPeriod <= 0 {
                 emptyChartPlaceholder
             } else {
                 Chart(expensesByCategory.prefix(5), id: \.name) { item in

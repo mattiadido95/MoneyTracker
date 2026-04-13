@@ -87,12 +87,22 @@ struct HomeView: View {
         .background(Color.systemGroupedBackground)
         .sheet(isPresented: $showingAddExpense) {
             AddExpenseView()
+                .environmentObject(expenseManager)
         }
         .sheet(isPresented: $showingExportSheet) {
             if let fileURL = exportFileURL {
                 ActivityViewController(activityItems: [fileURL]) {
                     alertItem = .success("File esportato con successo!")
                 }
+            } else {
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.largeTitle)
+                        .foregroundColor(.orange)
+                    Text("Impossibile preparare il file per la condivisione.")
+                        .font(.headline)
+                }
+                .padding()
             }
         }
         .sheet(isPresented: $showingImportPicker) {

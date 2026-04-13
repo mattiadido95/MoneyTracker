@@ -71,6 +71,8 @@ struct HeaderCard: View {
                     Text("€\(String(format: "%.2f", totaleMensile))")
                         .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundColor(.primary)
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(1)
                     
                     Text("Spese questo mese")
                         .font(.caption)

@@ -108,6 +108,13 @@ class ExpenseManager: ObservableObject {
         categorieSpese.removeAll { $0.id == spesa.id }
         // didSet verrà chiamato automaticamente
     }
+
+    /// Aggiorna una spesa esistente (sostituisce quella con lo stesso ID).
+    func aggiornaSpesa(_ spesa: CategoriaSpesa) {
+        if let index = categorieSpese.firstIndex(where: { $0.id == spesa.id }) {
+            categorieSpese[index] = spesa
+        }
+    }
     
     /// Rimuove spese agli indici specificati
     func rimuoviSpese(at offsets: IndexSet) {
@@ -143,7 +150,7 @@ class ExpenseManager: ObservableObject {
         // Media mensile (totale anno / 12)
         mediaMensile = totaleAnno / 12.0
         
-        // Prossima scadenza (la spesa più recente)
+        // Ultima spesa registrata (la piu recente come riferimento)
         if let prossimaSpesa = categorieSpese.sorted(by: { $0.data > $1.data }).first {
             let formatter = DateFormatter()
             formatter.dateFormat = "dd MMM"
@@ -197,25 +204,25 @@ class ExpenseManager: ObservableObject {
                 nome: "Affitto",
                 importo: 800.00,
                 colore: .purple,
-                data: calendar.date(byAdding: .day, value: -2, to: now)!
+                data: calendar.date(byAdding: .day, value: -2, to: now) ?? now
             ),
             CategoriaSpesa(
                 nome: "Luce",
                 importo: 89.50,
                 colore: .yellow,
-                data: calendar.date(byAdding: .day, value: -5, to: now)!
+                data: calendar.date(byAdding: .day, value: -5, to: now) ?? now
             ),
             CategoriaSpesa(
                 nome: "Gas",
                 importo: 156.20,
                 colore: .blue,
-                data: calendar.date(byAdding: .day, value: -10, to: now)!
+                data: calendar.date(byAdding: .day, value: -10, to: now) ?? now
             ),
             CategoriaSpesa(
                 nome: "Internet",
                 importo: 29.90,
                 colore: .cyan,
-                data: calendar.date(byAdding: .day, value: -3, to: now)!
+                data: calendar.date(byAdding: .day, value: -3, to: now) ?? now
             )
         ]
         
