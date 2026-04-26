@@ -57,9 +57,21 @@
 			membershipExceptions = (
 				AddExpenseView.swift,
 				Assets.xcassets,
+				BPERBankExtractor.swift,
+				BPERBankTransformer.swift,
+				BankETLPipeline.swift,
+				BankETLProtocols.swift,
+				BankImport.swift,
+				BankImportExporter.swift,
+				BankImportView.swift,
+				BankImportViewModel.swift,
+				BankTransaction.swift,
+				CategoryResolver.swift,
 				ColorExtension.swift,
 				ContentView.swift,
 				DEBUG_CRASH_BUILD.md,
+				DefaultBankTransformer.swift,
+				DefaultBankValidator.swift,
 				ExpenseListView.swift,
 				ExportImportManager.swift,
 				FIX_PREVIEW_CRASH.md,
@@ -71,6 +83,7 @@
 				MoneyTrackerApp.swift,
 				PersistenceManager.swift,
 				README.md,
+				SettingsView.swift,
 				StatisticsView.swift,
 				VEDI_TUTTO_IMPLEMENTATO.md,
 				ViewModels/ExpenseManager.swift,
@@ -92,6 +105,7 @@
 				Views/Home/RIEPILOGO_FINALE_EXPORT_IMPORT.md,
 				Views/Home/TEST_EXPORT_IMPORT.md,
 				Views/Home/test_import_example.json,
+				XLSXBankExtractor.swift,
 			);
 			target = 49E780512EEDBF30007D546D /* MoneyTrackerDesktop */;
 		};
