@@ -49,8 +49,10 @@ struct CategoryRow: View {
     let totale: Double
     var onDelete: (() -> Void)? = nil
     
+    /// Percentuale di questa spesa rispetto al totale. Protetto contro divisione per zero.
     var percentuale: Double {
-        (categoria.importo / totale) * 100
+        guard totale > 0 else { return 0 }
+        return (categoria.importo / totale) * 100
     }
     
     var body: some View {

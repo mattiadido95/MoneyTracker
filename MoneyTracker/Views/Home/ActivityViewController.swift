@@ -95,21 +95,66 @@ struct ActivityViewController: UIViewControllerRepresentable {
     }
 }
 #elseif os(macOS)
-// Su macOS, ActivityViewController non serve
-// Usiamo NSSharingServicePicker o SwiftUI nativo
+import AppKit
+
+/// Su macOS usiamo NSSharingServicePicker per condividere file.
 struct ActivityViewController: View {
     let activityItems: [Any]
     let onComplete: (() -> Void)?
-    
+
     init(activityItems: [Any], onComplete: (() -> Void)? = nil) {
         self.activityItems = activityItems
         self.onComplete = onComplete
     }
-    
+
     var body: some View {
-        // Su Mac, ShareLink gestisce tutto
-        Text("Usa ShareLink su macOS")
-            .hidden()
+        VStack(spacing: 16) {
+            Image(systemName: "square.and.arrow.up")
+                .font(.system(size: 40))
+                .foregroundColor(.accentColor)
+
+            Text("Condividi file esportato")
+                .font(.headline)
+
+            if let url = activityItems.first as? URL {
+                Text(url.lastPathComponent)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            HStack(spacing: 12) {
+                Button("Condividi...") {
+                    showSharingPicker()
+                }
+                .buttonStyle(.borderedProminent)
+
+                if let url = activityItems.first as? URL {
+                    Button("Mostra nel Finder") {
+                        NSWorkspace.shared.selectFile(
+                            url.path,
+                            inFileViewerRootedAtPath: url.deletingLastPathComponent().path
+                        )
+                        onComplete?()
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+        }
+        .padding(40)
+        .frame(minWidth: 350)
+    }
+
+    private func showSharingPicker() {
+        let picker = NSSharingServicePicker(items: activityItems)
+        if let window = NSApp.keyWindow,
+           let contentView = window.contentView {
+            picker.show(
+                relativeTo: contentView.bounds,
+                of: contentView,
+                preferredEdge: .minY
+            )
+        }
+        onComplete?()
     }
 }
 #endif

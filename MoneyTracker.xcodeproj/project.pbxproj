@@ -57,9 +57,21 @@
 			membershipExceptions = (
 				AddExpenseView.swift,
 				Assets.xcassets,
+				BPERBankExtractor.swift,
+				BPERBankTransformer.swift,
+				BankETLPipeline.swift,
+				BankETLProtocols.swift,
+				BankImport.swift,
+				BankImportExporter.swift,
+				BankImportView.swift,
+				BankImportViewModel.swift,
+				BankTransaction.swift,
+				CategoryResolver.swift,
 				ColorExtension.swift,
 				ContentView.swift,
 				DEBUG_CRASH_BUILD.md,
+				DefaultBankTransformer.swift,
+				DefaultBankValidator.swift,
 				ExpenseListView.swift,
 				ExportImportManager.swift,
 				FIX_PREVIEW_CRASH.md,
@@ -71,6 +83,7 @@
 				MoneyTrackerApp.swift,
 				PersistenceManager.swift,
 				README.md,
+				SettingsView.swift,
 				StatisticsView.swift,
 				VEDI_TUTTO_IMPLEMENTATO.md,
 				ViewModels/ExpenseManager.swift,
@@ -92,6 +105,7 @@
 				Views/Home/RIEPILOGO_FINALE_EXPORT_IMPORT.md,
 				Views/Home/TEST_EXPORT_IMPORT.md,
 				Views/Home/test_import_example.json,
+				XLSXBankExtractor.swift,
 			);
 			target = 49E780512EEDBF30007D546D /* MoneyTrackerDesktop */;
 		};
@@ -667,8 +681,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = WL4C644YVH;
-				ENABLE_APP_SANDBOX = YES;
-				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -704,8 +718,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = WL4C644YVH;
-				ENABLE_APP_SANDBOX = YES;
-				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -817,8 +831,8 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = WL4C644YVH;
-				ENABLE_APP_SANDBOX = YES;
-				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -832,7 +846,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = app.madd.MoneyTrackerDesktop;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
-				SDKROOT = macosx26.2;
+				SDKROOT = macosx;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -851,8 +865,8 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = WL4C644YVH;
-				ENABLE_APP_SANDBOX = YES;
-				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -867,7 +881,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = app.madd.MoneyTrackerDesktop;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
-				SDKROOT = macosx26.2;
+				SDKROOT = macosx;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
