@@ -150,14 +150,33 @@ class BankImportViewModel: ObservableObject {
     
     // MARK: - Public Methods
     
+    /// Seleziona automaticamente la pipeline corretta in base al file
+    private func selectPipeline(for fileURL: URL) {
+        let ext = fileURL.pathExtension.lowercased()
+        if ext == "xls" {
+            // File .xls → usa sempre BPER (unico formato .xls supportato)
+            pipeline = BankETLPipeline.bper(configuration: pipelineConfiguration)
+        } else {
+            // File .xlsx → mantieni pipeline generica o quella già configurata
+            pipeline = BankETLPipeline.generic(
+                bankName: bankName,
+                columnMapping: columnMapping,
+                configuration: pipelineConfiguration
+            )
+        }
+    }
+
     /// Importa file estratto conto
-    /// - Parameter fileURL: URL del file XLSX
+    /// - Parameter fileURL: URL del file XLS o XLSX
     func importFile(from fileURL: URL) async {
         currentFileURL = fileURL
         importState = .processing
         importProgress = 0.0
         progressMessage = "Avvio import..."
-        
+
+        // Sceglie la pipeline in base al formato file
+        selectPipeline(for: fileURL)
+
         do {
             // Simula progress (ETL non ha progress reale)
             updateProgress(0.2, message: "Lettura file...")

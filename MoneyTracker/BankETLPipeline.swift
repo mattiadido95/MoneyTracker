@@ -297,12 +297,14 @@ class BankETLPipeline {
             // PHASE 1: EXTRACT
             // ==============================
             log("📥 FASE 1: EXTRACT")
-            
-            guard let xlsxExtractor = extractor as? XLSXBankExtractor else {
+
+            if let bperExtractor = extractor as? BPERBankExtractor {
+                extractedRows = try await bperExtractor.extractRows(from: fileURL)
+            } else if let xlsxExtractor = extractor as? XLSXBankExtractor {
+                extractedRows = try await xlsxExtractor.extractRows(from: fileURL)
+            } else {
                 throw BankImportError.invalidFileFormat
             }
-            
-            extractedRows = try await xlsxExtractor.extractRows(from: fileURL)
             
             log("   ✅ Estratte \(extractedRows.count) righe")
             
@@ -496,6 +498,17 @@ extension BankETLPipeline {
         )
     }
     
+    /// Crea pipeline per BPER Banca (XLS + colonne Entrate/Uscite + date italiane)
+    static func bper(configuration: ETLPipelineConfiguration = .default) -> BankETLPipeline {
+        BankETLPipeline(
+            extractor:     BPERBankExtractor(),
+            transformer:   BPERBankTransformer(),
+            validator:     DefaultBankValidator(rules: nil),
+            configuration: configuration,
+            columnMapping: .bper
+        )
+    }
+
     /// Crea pipeline generico con nome banca custom
     static func generic(
         bankName: String,

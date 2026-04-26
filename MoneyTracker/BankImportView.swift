@@ -30,6 +30,29 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
+
+// MARK: - Colori cross-platform
+private extension Color {
+    static var platformWindowBackground: Color {
+        #if os(macOS)
+        Color(NSColor.windowBackgroundColor)
+        #else
+        Color(UIColor.systemBackground)
+        #endif
+    }
+    static var platformControlBackground: Color {
+        #if os(macOS)
+        Color(NSColor.controlBackgroundColor)
+        #else
+        Color(UIColor.secondarySystemBackground)
+        #endif
+    }
+}
 
 struct BankImportView: View {
     
@@ -51,6 +74,10 @@ struct BankImportView: View {
     /// Mostra alert export success
     @State private var showExportAlert = false
     @State private var exportedFileURL: URL?
+
+    /// Alert conferma import
+    @State private var showConfirmAlert = false
+    @State private var confirmAlertMessage = ""
     
     // MARK: - Body
     
@@ -70,7 +97,7 @@ struct BankImportView: View {
                 .keyboardShortcut(.cancelAction)
             }
             .padding()
-            .background(Color(.windowBackgroundColor))
+            .background(Color.platformWindowBackground)
             
             Divider()
             
@@ -95,7 +122,10 @@ struct BankImportView: View {
         .frame(minWidth: 700, minHeight: 600)
         .fileImporter(
             isPresented: $showFileImporter,
-            allowedContentTypes: [.init(filenameExtension: "xlsx")!],
+            allowedContentTypes: [
+                .init(filenameExtension: "xlsx")!,
+                .init(filenameExtension: "xls")!
+            ],
             allowsMultipleSelection: false
         ) { result in
             handleFileSelection(result)
@@ -109,15 +139,25 @@ struct BankImportView: View {
         }
         .alert("Export Completato", isPresented: $showExportAlert) {
             Button("OK") {}
+            #if os(macOS)
             if let url = exportedFileURL {
                 Button("Mostra nel Finder") {
-                    NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
+                    NSWorkspace.shared.selectFile(
+                        url.path,
+                        inFileViewerRootedAtPath: url.deletingLastPathComponent().path
+                    )
                 }
             }
+            #endif
         } message: {
             if let url = exportedFileURL {
                 Text("File esportato in:\n\(url.path)")
             }
+        }
+        .alert("Import Confermato", isPresented: $showConfirmAlert) {
+            Button("OK") { dismiss() }
+        } message: {
+            Text(confirmAlertMessage)
         }
         .sheet(isPresented: $showDetailsSheet) {
             if let report = viewModel.getReport() {
@@ -138,7 +178,7 @@ struct BankImportView: View {
                 .font(.title2)
                 .fontWeight(.semibold)
             
-            Text("Seleziona un file XLSX per importare le transazioni")
+            Text("Seleziona un file XLS o XLSX per importare le transazioni")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
@@ -186,16 +226,17 @@ struct BankImportView: View {
                     Label("Formati supportati", systemImage: "doc.fill")
                         .font(.headline)
                     
-                    Text("• File Excel (.xlsx)")
+                    Text("• File Excel (.xlsx / .xls)")
                     Text("• Prima riga come intestazione colonne")
                     Text("• Colonne richieste: Data, Descrizione, Importo")
-                    
+
                     Divider()
                         .padding(.vertical, 4)
-                    
+
                     Label("Banche supportate", systemImage: "building.columns.fill")
                         .font(.headline)
-                    
+
+                    Text("• BPER Banca (XLS nativo)")
                     Text("• Intesa Sanpaolo")
                     Text("• Unicredit")
                     Text("• Altri formati generici")
@@ -431,18 +472,9 @@ struct BankImportView: View {
     
     private func confirmImport() {
         guard let bankImport = viewModel.bankImport else { return }
-        
         // TODO: Converti BankTransaction in CategoriaSpesa
-        // Per ora mostra solo alert
-        let alert = NSAlert()
-        alert.messageText = "Import Confermato"
-        alert.informativeText = "Importate \(bankImport.transactionCount) transazioni da \(bankImport.bankName)"
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
-        
-        // Chiudi view
-        dismiss()
+        confirmAlertMessage = "Importate \(bankImport.transactionCount) transazioni da \(bankImport.bankName)"
+        showConfirmAlert = true
     }
 }
 
@@ -522,7 +554,7 @@ struct TransactionPreviewRow: View {
             }
         }
         .padding(12)
-        .background(Color(.controlBackgroundColor))
+        .background(Color.platformControlBackground)
         .cornerRadius(8)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
