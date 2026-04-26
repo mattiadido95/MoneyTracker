@@ -55,6 +55,7 @@ struct AddExpenseView: View {
     @State private var importoText = ""
     @State private var selectedColor = Color.blue
     @State private var data = Date()
+    @State private var selectedCategoria = "Altro"
     @FocusState private var isFocused: Bool
     
     // MARK: - Computed Properties
@@ -135,13 +136,25 @@ struct AddExpenseView: View {
                 }
             }
             
+            Section(header: Text("Categoria")) {
+                Picker("Categoria", selection: $selectedCategoria) {
+                    ForEach(CategoriaSpesa.allCategorie, id: \.self) { cat in
+                        Text(cat).tag(cat)
+                    }
+                }
+                .onChange(of: selectedCategoria) { _, newValue in
+                    // Aggiorna colore automaticamente in base alla categoria scelta
+                    selectedColor = CategoriaSpesa.colorForCategoria(newValue)
+                }
+            }
+
             Section(header: Text("Data e Aspetto")) {
                 DatePicker(
                     "Data",
                     selection: $data,
                     displayedComponents: .date
                 )
-                
+
                 ColorPicker("Colore categoria", selection: $selectedColor)
                 
                 // Preview del colore
@@ -207,7 +220,8 @@ struct AddExpenseView: View {
             nome: nome,
             importo: importo,
             colore: selectedColor,
-            data: data
+            data: data,
+            categoria: selectedCategoria
         )
         
         expenseManager.aggiungiSpesa(nuovaSpesa)
