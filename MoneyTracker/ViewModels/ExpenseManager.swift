@@ -204,25 +204,29 @@ class ExpenseManager: ObservableObject {
                 nome: "Affitto",
                 importo: 800.00,
                 colore: .purple,
-                data: calendar.date(byAdding: .day, value: -2, to: now) ?? now
+                data: calendar.date(byAdding: .day, value: -2, to: now) ?? now,
+                categoria: "Affitto"
             ),
             CategoriaSpesa(
-                nome: "Luce",
+                nome: "Bolletta Luce",
                 importo: 89.50,
                 colore: .yellow,
-                data: calendar.date(byAdding: .day, value: -5, to: now) ?? now
+                data: calendar.date(byAdding: .day, value: -5, to: now) ?? now,
+                categoria: "Utenze"
             ),
             CategoriaSpesa(
-                nome: "Gas",
+                nome: "Bolletta Gas",
                 importo: 156.20,
-                colore: .blue,
-                data: calendar.date(byAdding: .day, value: -10, to: now) ?? now
+                colore: .yellow,
+                data: calendar.date(byAdding: .day, value: -10, to: now) ?? now,
+                categoria: "Utenze"
             ),
             CategoriaSpesa(
-                nome: "Internet",
+                nome: "Internet Fibra",
                 importo: 29.90,
-                colore: .cyan,
-                data: calendar.date(byAdding: .day, value: -3, to: now) ?? now
+                colore: .indigo,
+                data: calendar.date(byAdding: .day, value: -3, to: now) ?? now,
+                categoria: "Telecomunicazioni"
             )
         ]
         

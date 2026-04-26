@@ -39,27 +39,76 @@ struct CategoriaSpesa: Codable, Identifiable {
     let nome: String
     let importo: Double
     let data: Date
-    
+
+    /// Categoria macro (es: "Alimentari", "Trasporti")
+    let categoria: String
+
     // Colore serializzato come stringa (es: "blue", "red")
     // I Color non possono essere serializzati direttamente in JSON
     private let coloreNome: String
-    
+
     // Computed property per ottenere il Color SwiftUI
     var colore: Color {
-        get { Color.fromString(coloreNome) }
+        Color.fromString(coloreNome)
     }
-    
-    init(id: UUID = UUID(), nome: String, importo: Double, colore: Color, data: Date = Date()) {
+
+    init(id: UUID = UUID(), nome: String, importo: Double, colore: Color, data: Date = Date(), categoria: String = "Altro") {
         self.id = id
         self.nome = nome
         self.importo = importo
         self.coloreNome = colore.toString()
         self.data = data
+        self.categoria = categoria
     }
-    
+
     // CodingKeys per serializzazione JSON
     enum CodingKeys: String, CodingKey {
-        case id, nome, importo, data, coloreNome
+        case id, nome, importo, data, coloreNome, categoria
+    }
+
+    // Decoder custom: gestisce file JSON vecchi senza campo `categoria`
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id         = try c.decode(UUID.self,   forKey: .id)
+        nome       = try c.decode(String.self, forKey: .nome)
+        importo    = try c.decode(Double.self, forKey: .importo)
+        data       = try c.decode(Date.self,   forKey: .data)
+        coloreNome = try c.decode(String.self, forKey: .coloreNome)
+        // Campo nuovo: usa "Altro" come default per record già salvati
+        categoria  = try c.decodeIfPresent(String.self, forKey: .categoria) ?? "Altro"
+    }
+}
+
+// MARK: - Categorie standard
+
+extension CategoriaSpesa {
+
+    /// Lista completa delle categorie disponibili
+    static let allCategorie: [String] = [
+        "Alimentari", "Ristorazione", "Trasporti", "Utenze",
+        "Telecomunicazioni", "Salute", "Affitto", "Intrattenimento",
+        "Abbigliamento", "Casa", "Stipendio", "Bonifico", "Prelievo",
+        "Spese Varie", "Altro"
+    ]
+
+    /// Colore fisso associato a ogni categoria (usato nei grafici)
+    static func colorForCategoria(_ categoria: String) -> Color {
+        switch categoria {
+        case "Alimentari":        return .orange
+        case "Ristorazione":      return .pink
+        case "Trasporti":         return .blue
+        case "Utenze":            return .yellow
+        case "Telecomunicazioni": return .indigo
+        case "Salute":            return .red
+        case "Affitto":           return .purple
+        case "Intrattenimento":   return .cyan
+        case "Abbigliamento":     return .pink
+        case "Casa":              return .orange
+        case "Stipendio":         return .green
+        case "Bonifico":          return .cyan
+        case "Prelievo":          return .blue
+        default:                  return .blue
+        }
     }
 }
 

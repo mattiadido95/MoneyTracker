@@ -473,55 +473,36 @@ struct BankImportView: View {
     private func confirmImport() {
         guard let bankImport = viewModel.bankImport else { return }
 
-        // Converti BankTransaction → CategoriaSpesa (solo uscite)
-        let expenses = bankImport.transactions.filter { $0.type == .expense }
-        let nuoveSpese: [CategoriaSpesa] = expenses.map { tx in
-            CategoriaSpesa(
-                nome: tx.description,
-                importo: tx.amount,
-                colore: colorForTransaction(tx),
-                data: tx.date
-            )
-        }
+        Task {
+            let resolver = MockCategoryResolver()
+            let expenses = bankImport.transactions.filter { $0.type == .expense }
 
-        // Batch insert — didSet si attiva una volta sola → un solo salvataggio
-        expenseManager.categorieSpese.append(contentsOf: nuoveSpese)
+            // Categorizza ogni transazione con MockCategoryResolver
+            var nuoveSpese: [CategoriaSpesa] = []
+            for tx in expenses {
+                let result = await resolver.resolveCategory(for: tx)
+                let spesa = CategoriaSpesa(
+                    nome: tx.description,
+                    importo: tx.amount,
+                    colore: CategoriaSpesa.colorForCategoria(result.category),
+                    data: tx.date,
+                    categoria: result.category
+                )
+                nuoveSpese.append(spesa)
+            }
 
-        let skipped = bankImport.transactions.count - expenses.count
-        var msg = "Aggiunte \(nuoveSpese.count) spese da \(bankImport.bankName)."
-        if skipped > 0 {
-            msg += "\n(\(skipped) entrate escluse)"
-        }
-        confirmAlertMessage = msg
-        showConfirmAlert = true
+            // Batch insert — didSet si attiva una volta sola → un solo salvataggio
+            expenseManager.categorieSpese.append(contentsOf: nuoveSpese)
 
-        print("✅ Import confermato: \(nuoveSpese.count) spese aggiunte, \(skipped) entrate saltate")
-    }
+            let skipped = bankImport.transactions.count - expenses.count
+            var msg = "Aggiunte \(nuoveSpese.count) spese da \(bankImport.bankName)."
+            if skipped > 0 {
+                msg += "\n(\(skipped) entrate escluse)"
+            }
+            confirmAlertMessage = msg
+            showConfirmAlert = true
 
-    /// Mappa categoria/tipo transazione → colore per CategoriaSpesa
-    private func colorForTransaction(_ tx: BankTransaction) -> Color {
-        if tx.type == .income { return .green }
-
-        let cat = (tx.category ?? "").lowercased()
-        switch true {
-        case cat.contains("aliment") || cat.contains("supermercato") || cat.contains("ristorazione"):
-            return .orange
-        case cat.contains("trasport") || cat.contains("auto") || cat.contains("carburant"):
-            return .blue
-        case cat.contains("salute") || cat.contains("farmac") || cat.contains("medic"):
-            return .red
-        case cat.contains("casa") || cat.contains("affitto") || cat.contains("utenz"):
-            return .purple
-        case cat.contains("svago") || cat.contains("intrattenimento") || cat.contains("sport"):
-            return .cyan
-        case cat.contains("abbigliamento") || cat.contains("shopping"):
-            return .pink
-        case cat.contains("stipendio") || cat.contains("pensione") || cat.contains("reddito"):
-            return .green
-        case cat.contains("banca") || cat.contains("finanz") || cat.contains("assicuraz"):
-            return .indigo
-        default:
-            return .red
+            print("✅ Import confermato: \(nuoveSpese.count) spese aggiunte, \(skipped) entrate saltate")
         }
     }
 }

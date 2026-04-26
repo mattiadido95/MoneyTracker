@@ -30,6 +30,7 @@ struct AddExpenseView: View {
     @State private var importoText = ""
     @State private var selectedColor = Color.blue
     @State private var data = Date()
+    @State private var selectedCategoria = "Altro"
     @FocusState private var isFocused: Bool
 
     // MARK: - Init
@@ -87,6 +88,7 @@ struct AddExpenseView: View {
                 importoText = String(format: "%.2f", spesa.importo)
                 selectedColor = spesa.colore
                 data = spesa.data
+                selectedCategoria = spesa.categoria
             }
         }
     }
@@ -121,9 +123,22 @@ struct AddExpenseView: View {
                 }
             }
 
+            Section(header: Text("Categoria")) {
+                Picker("Categoria", selection: $selectedCategoria) {
+                    ForEach(CategoriaSpesa.allCategorie, id: \.self) { cat in
+                        Text(cat).tag(cat)
+                    }
+                }
+                .onChange(of: selectedCategoria) { _, newValue in
+                    selectedColor = CategoriaSpesa.colorForCategoria(newValue)
+                }
+            }
+
             Section(header: Text("Data e Aspetto")) {
                 DatePicker("Data", selection: $data, displayedComponents: .date)
+
                 ColorPicker("Colore categoria", selection: $selectedColor)
+
                 HStack {
                     Text("Anteprima")
                         .foregroundColor(.secondary)
@@ -181,7 +196,8 @@ struct AddExpenseView: View {
                 nome: nome.trimmingCharacters(in: .whitespaces),
                 importo: importo,
                 colore: selectedColor,
-                data: data
+                data: data,
+                categoria: selectedCategoria
             )
             expenseManager.aggiornaSpesa(spesaAggiornata)
         } else {
@@ -189,7 +205,8 @@ struct AddExpenseView: View {
                 nome: nome.trimmingCharacters(in: .whitespaces),
                 importo: importo,
                 colore: selectedColor,
-                data: data
+                data: data,
+                categoria: selectedCategoria
             )
             expenseManager.aggiungiSpesa(nuovaSpesa)
         }

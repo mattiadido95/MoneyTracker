@@ -81,11 +81,11 @@ struct StatisticsView: View {
     
     /// Spese raggruppate per categoria
     private var expensesByCategory: [(name: String, amount: Double, color: Color)] {
-        let grouped = Dictionary(grouping: filteredExpenses) { $0.nome }
-        return grouped.map { name, expenses in
+        let grouped = Dictionary(grouping: filteredExpenses) { $0.categoria }
+        return grouped.map { categoria, expenses in
             let total = expenses.reduce(0) { $0 + $1.importo }
-            let color = expenses.first?.colore ?? .blue
-            return (name, total, color)
+            let color = CategoriaSpesa.colorForCategoria(categoria)
+            return (categoria, total, color)
         }
         .sorted { $0.amount > $1.amount }
     }
