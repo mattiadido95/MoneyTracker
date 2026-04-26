@@ -158,19 +158,33 @@ print(json.dumps(rows, ensure_ascii=False))
         process.standardError = stderrPipe
 
         try process.run()
+
+        // IMPORTANTE: leggere i pipe PRIMA di waitUntilExit per evitare deadlock.
+        // Il buffer del pipe è ~64KB: se Python scrive più di così senza che
+        // qualcuno legga, blocca la write() → Python non termina mai →
+        // waitUntilExit() blocca all'infinito.
+        // Leggiamo stderr in background (dispatch) e stdout sul thread corrente.
+        let stderrQueue = DispatchQueue(label: "bper.python.stderr")
+        var stderrData = Data()
+        let stderrGroup = DispatchGroup()
+        stderrGroup.enter()
+        stderrQueue.async {
+            stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            stderrGroup.leave()
+        }
+
+        let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+        stderrGroup.wait()
         process.waitUntilExit()
 
         guard process.terminationStatus == 0 else {
-            let errMsg = String(
-                data: stderrPipe.fileHandleForReading.readDataToEndOfFile(),
-                encoding: .utf8
-            ) ?? "errore sconosciuto"
+            let errMsg = String(data: stderrData, encoding: .utf8) ?? "errore sconosciuto"
             throw BankImportError.parsingFailed(
                 details: "Python exit \(process.terminationStatus): \(errMsg)"
             )
         }
 
-        return stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+        return stdoutData
     }
 #endif
 
