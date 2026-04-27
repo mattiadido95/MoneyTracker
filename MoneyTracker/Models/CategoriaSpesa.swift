@@ -89,7 +89,7 @@ extension CategoriaSpesa {
         "Telecomunicazioni", "Salute", "Affitto", "Intrattenimento",
         "Abbigliamento", "Casa", "Animali", "Assicurazioni",
         "Rate/Finanziamento", "Spese Bancarie", "Tasse", "Istruzione",
-        "Viaggi", "Stipendio", "Bonifico", "Prelievo", "Carta Prepagata", "Spese Varie", "Altro"
+        "Viaggi", "Stipendio", "Bonifico", "Prelievo", "Carta Prepagata", "PayPal", "Spese Varie", "Altro"
     ]
 
     /// Colore fisso associato a ogni categoria (usato nei grafici)
@@ -116,6 +116,7 @@ extension CategoriaSpesa {
         case "Bonifico":             return .cyan
         case "Prelievo":             return .blue
         case "Carta Prepagata":      return .orange
+        case "PayPal":               return .blue
         default:                     return .blue
         }
     }
