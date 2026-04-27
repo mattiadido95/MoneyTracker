@@ -198,81 +198,172 @@ class MockCategoryResolver: CategoryResolver {
     
     // MARK: - Properties
     
-    /// Categorie supportate con keyword
+    /// Categorie supportate con keyword (basate sui merchant reali BPER)
     private let categoryRules: [String: [String]] = [
-        "Utenze": [
-            "luce", "gas", "acqua", "elettricità", "energia",
-            "enel", "eni ", "acea", "hera", "a2a", "iren",
-            "bolletta", "consumo", "sdd enel", "sdd iren",
-            "addebito utenza", "utenza"
+
+        // ── Alimentari ───────────────────────────────────────────────────────
+        "Alimentari": [
+            "supermercato", "alimentari", "drogheria",
+            "conad", "coop ", "esselunga", "carrefour", "lidl",
+            "eurospin", "aldi", "penny ", "pam ", "sigma ",
+            "iper ", "ipercoop", "simply", "bennet", "unes",
+            "coal ", "interspar", "unicoop",
+            "macelleria", "panificio", "forno ", "mercato rionale"
         ],
-        "Telecomunicazioni": [
-            "telefono", "internet", "mobile", "cellulare",
-            "tim ", "vodafone", "wind", "iliad", "fastweb", "tiscali",
-            "adsl", "fibra", "sky ", "dazn"
+
+        // ── Ristorazione ─────────────────────────────────────────────────────
+        "Ristorazione": [
+            "ristorante", "pizzeria", "trattoria", "osteria",
+            "bar ", "caffe", "caffè", "pub ", "bistrot", "gelateria",
+            "mcdonald", "mac donald", "burger king", "kfc", "subway",
+            "old wild west", "autogrill",
+            "sushi", "poke", "kitchen", "sali scendi",
+            "dabbe", "beerholds", "coyote", "vapori di birra",
+            "dreamcream", "giap ", "enodelizie",
+            "deliveroo", "glovo", "just eat", "justeat", "uber eats"
         ],
+
+        // ── Trasporti ────────────────────────────────────────────────────────
         "Trasporti": [
             "benzina", "gasolio", "carburante", "diesel",
             "autostrada", "pedaggio", "telepass",
             "treno", "trenitalia", "italo", "freccia",
-            "metro", "atm ", "atac", "bus ", "taxi", "uber",
-            "parcheggio", "sosta", "multa",
-            "ip ", "agip", "q8", "esso", "shell", "tamoil", "eni card"
+            "metro ", "taxi", "uber ",
+            "parcheggio", "sosta ",
+            "aspit", "bspdv", "eniparki",
+            "self nuova oasi", "sozio carburanti",
+            "vomano ovest",
+            "ip ", "agip", "q8 ", "esso ", "shell ", "tamoil"
         ],
-        "Alimentari": [
-            "supermercato", "alimentari", "drogheria",
-            "conad", "coop ", "esselunga", "carrefour", "lidl",
-            "eurospin", "aldi", "penny", "pam ", "sigma ",
-            "iper", "ipercoop", "simply", "bennet", "unes",
-            "nature", "frutta", "verdura", "macelleria", "panificio",
-            "pane e ", "forno ", "mercato"
+
+        // ── Telecomunicazioni ────────────────────────────────────────────────
+        "Telecomunicazioni": [
+            "vodafone", "tim ", "wind ", "iliad", "fastweb", "tiscali",
+            "adsl", "fibra", "sky ", "dazn",
+            "bollettino postale"
         ],
-        "Ristorazione": [
-            "ristorante", "pizzeria", "trattoria", "osteria",
-            "bar ", "caffe", "caffè", "pub ", "bistrot", "gelateria",
-            "mcdonald", "burger king", "kfc", "subway", "old wild",
-            "deliveroo", "glovo", "just eat", "uber eats", "justeat"
+
+        // ── Utenze ───────────────────────────────────────────────────────────
+        "Utenze": [
+            "enel ", "eni gas", "a2a", "hera ", "iren ", "acea ",
+            "sorgenia", "engie", "plenitude",
+            "bolletta luce", "bolletta gas", "bolletta acqua",
+            "addebito sdd enel", "addebito sdd iren", "addebito sdd a2a",
+            "addebito utenza"
         ],
+
+        // ── Salute ───────────────────────────────────────────────────────────
         "Salute": [
-            "farmacia", "parafarmacia", "medico", "dottore",
-            "ospedale", "clinica", "dentista", "odontoiatra",
-            "analisi", "laboratorio", "ottica", "farmac"
+            "farmacia", "parafarmacia", "farma ",
+            "medico", "dottore", "ospedale", "clinica",
+            "dentista", "odontoiatra",
+            "analisi", "laboratorio", "ottica",
+            "centro di medicina", "centro medico"
         ],
+
+        // ── Animali ──────────────────────────────────────────────────────────
+        "Animali": [
+            "zooing", "arcaplanet", "zoonove",
+            "veterinario", "centro veterinario",
+            "green fish", "cinofilo",
+            "petshop", "pet shop"
+        ],
+
+        // ── Affitto ──────────────────────────────────────────────────────────
         "Affitto": [
             "affitto", "locazione", "canone locazione",
-            "condominio", "amministratore"
+            "condominio", "amministratore",
+            "bozza venturi", "vicedomini"
         ],
+
+        // ── Casa ─────────────────────────────────────────────────────────────
+        "Casa": [
+            "ikea", "leroy merlin", "brico", "bricocenter", "bricoman",
+            "obi ", "castorama", "tigota",
+            "arredamento", "mobili", "elettrodomestic",
+            "ipershopping casa", "panda home", "kasanova"
+        ],
+
+        // ── Abbigliamento ────────────────────────────────────────────────────
+        "Abbigliamento": [
+            "zara", "h&m", "bershka", "pull&bear", "mango",
+            "decathlon", "nike ", "adidas", "footlocker",
+            "intimissimi", "calzedonia", "primark", "pepco",
+            "abbigliamento", "calzature", "scarpe"
+        ],
+
+        // ── Intrattenimento ──────────────────────────────────────────────────
         "Intrattenimento": [
             "cinema", "teatro", "spettacolo", "concerto",
             "netflix", "spotify", "amazon prime", "disney", "apple tv",
-            "playstation", "xbox", "steam", "gaming",
-            "palestra", "gym", "fitness", "piscina"
+            "playstation", "xbox", "steam",
+            "palestra", "gym", "fitness", "piscina",
+            "padel", "campo sportivo", "associazione sportiva", "asd "
         ],
-        "Abbigliamento": [
-            "zara", "h&m", "bershka", "pull&bear", "mango",
-            "decathlon", "nike", "adidas", "footlocker",
-            "abbigliamento", "calzature", "scarpe"
+
+        // ── Assicurazioni ────────────────────────────────────────────────────
+        "Assicurazioni": [
+            "alleanza assicurazioni", "generali", "allianz",
+            "unipol", "sara assicurazioni", "zurich",
+            "assicurazione", "polizza", "premio polizze"
         ],
-        "Casa": [
-            "ikea", "leroy merlin", "brico", "bricocenter",
-            "arredamento", "mobili", "obi ", "castorama",
-            "elettrodomestic", "folletto"
+
+        // ── Rate/Finanziamento ───────────────────────────────────────────────
+        "Rate/Finanziamento": [
+            "agos ducato", "compass banca", "findomestic",
+            "cofidis", "santander consumer",
+            "finanziamento", "rata mutuo", "mutuo", "prestito"
         ],
+
+        // ── Spese Bancarie ───────────────────────────────────────────────────
+        "Spese Bancarie": [
+            "commissioni bonifici", "commissioni carta",
+            "commissioni pagamento", "comm. su ric",
+            "imposta di bollo", "competenze spese",
+            "canone conto", "spese tenuta conto"
+        ],
+
+        // ── Tasse ────────────────────────────────────────────────────────────
+        "Tasse": [
+            "pagopa", "f24", "agenzia delle entrate",
+            "tributo", "imu ", "tari ", "tasi "
+        ],
+
+        // ── Istruzione ───────────────────────────────────────────────────────
+        "Istruzione": [
+            "universita", "università", "ecampus", "e-campus",
+            "scuola", "formazione", "tasse universitarie"
+        ],
+
+        // ── Viaggi ───────────────────────────────────────────────────────────
+        "Viaggi": [
+            "ryanair", "alitalia", "vueling", "easyjet", "wizz",
+            "hotel", "airbnb", "booking.com",
+            "traghetto", "crociera"
+        ],
+
+        // ── Stipendio ────────────────────────────────────────────────────────
         "Stipendio": [
-            "stipendio", "salary", "salario", "retribuzione", "cedolino",
-            "accredito stipendio", "pagamento stipendio"
+            "emolumenti", "stipendio", "salario", "retribuzione",
+            "accredito competenze", "accredito mensile",
+            "iconsulting"
         ],
-        "Bonifico": [
-            "bonifico", "trasferimento", "giroconto", "virement"
-        ],
+
+        // ── Prelievo ─────────────────────────────────────────────────────────
         "Prelievo": [
-            "prelievo", "bancomat", "atm ", "cash"
+            "prelievo atm", "prelievo bancomat"
+        ],
+
+        // ── Carta Prepagata ──────────────────────────────────────────────────
+        "Carta Prepagata": [
+            "carta prepagata", "ric.prep.", "ricarica prepagata",
+            "smart web mobile"
         ]
     ]
 
     /// Categorie BPER "specifiche": se keyword matching non trova nulla,
     /// queste valgono come fallback affidabile.
-    /// "PAGAMENTO" è escluso perché è troppo generico (copre tutto il POS).
+    /// "PAGAMENTO" e "BANCOMAT" esclusi: troppo generici.
     private let bperSpecificCategories: Set<String> = [
         "Prelievo", "Bonifico", "Stipendio", "Utenze", "Tasse", "Mutuo"
     ]
