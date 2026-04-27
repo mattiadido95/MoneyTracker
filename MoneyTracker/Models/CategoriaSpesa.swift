@@ -87,27 +87,36 @@ extension CategoriaSpesa {
     static let allCategorie: [String] = [
         "Alimentari", "Ristorazione", "Trasporti", "Utenze",
         "Telecomunicazioni", "Salute", "Affitto", "Intrattenimento",
-        "Abbigliamento", "Casa", "Stipendio", "Bonifico", "Prelievo",
-        "Spese Varie", "Altro"
+        "Abbigliamento", "Casa", "Animali", "Assicurazioni",
+        "Rate/Finanziamento", "Spese Bancarie", "Tasse", "Istruzione",
+        "Viaggi", "Stipendio", "Bonifico", "Prelievo", "Carta Prepagata", "Spese Varie", "Altro"
     ]
 
     /// Colore fisso associato a ogni categoria (usato nei grafici)
     static func colorForCategoria(_ categoria: String) -> Color {
         switch categoria {
-        case "Alimentari":        return .orange
-        case "Ristorazione":      return .pink
-        case "Trasporti":         return .blue
-        case "Utenze":            return .yellow
-        case "Telecomunicazioni": return .indigo
-        case "Salute":            return .red
-        case "Affitto":           return .purple
-        case "Intrattenimento":   return .cyan
-        case "Abbigliamento":     return .pink
-        case "Casa":              return .orange
-        case "Stipendio":         return .green
-        case "Bonifico":          return .cyan
-        case "Prelievo":          return .blue
-        default:                  return .blue
+        case "Alimentari":           return .orange
+        case "Ristorazione":         return .pink
+        case "Trasporti":            return .blue
+        case "Utenze":               return .yellow
+        case "Telecomunicazioni":    return .indigo
+        case "Salute":               return .red
+        case "Affitto":              return .purple
+        case "Intrattenimento":      return .cyan
+        case "Abbigliamento":        return .pink
+        case "Casa":                 return .orange
+        case "Animali":              return .green
+        case "Assicurazioni":        return .indigo
+        case "Rate/Finanziamento":   return .red
+        case "Spese Bancarie":       return .blue
+        case "Tasse":                return .orange
+        case "Istruzione":           return .purple
+        case "Viaggi":               return .cyan
+        case "Stipendio":            return .green
+        case "Bonifico":             return .cyan
+        case "Prelievo":             return .blue
+        case "Carta Prepagata":      return .orange
+        default:                     return .blue
         }
     }
 }
