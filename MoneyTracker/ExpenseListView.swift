@@ -2,119 +2,83 @@
 //  ExpenseListView.swift
 //  MoneyTracker
 //
-//  Created by Mattia Di Donato on 07/12/25.
-//
 
 import SwiftUI
 
 /// Lista completa delle spese con filtri, ordinamento, ricerca e modifica.
 struct ExpenseListView: View {
+
     // MARK: - Environment
     @EnvironmentObject var expenseManager: ExpenseManager
-    @Environment(\.dismiss) var dismiss
 
     // MARK: - State
-    @State private var filterOption: FilterOption = .all
+    @State private var filterPeriod: PeriodFilter = .all
+    @State private var filterCategoria: String = "Tutte"
     @State private var sortOption: SortOption = .dateNewest
-    @State private var searchText = ""
+    @State private var searchText: String = ""
     @State private var spesaDaModificare: CategoriaSpesa?
 
     // MARK: - Enums
 
-    enum FilterOption: String, CaseIterable {
-        case all = "Tutte"
+    enum PeriodFilter: String, CaseIterable {
+        case all          = "Tutte"
         case currentMonth = "Questo Mese"
-        case currentYear = "Quest'Anno"
-
-        var icon: String {
-            switch self {
-            case .all: return "list.bullet"
-            case .currentMonth: return "calendar"
-            case .currentYear: return "calendar.badge.clock"
-            }
-        }
+        case currentYear  = "Quest'Anno"
     }
 
     enum SortOption: String, CaseIterable {
         case dateNewest = "Più Recenti"
         case dateOldest = "Più Vecchie"
         case amountHigh = "Importo ↓"
-        case amountLow = "Importo ↑"
-
-        var icon: String {
-            switch self {
-            case .dateNewest: return "arrow.down"
-            case .dateOldest: return "arrow.up"
-            case .amountHigh: return "arrow.down.circle"
-            case .amountLow: return "arrow.up.circle"
-            }
-        }
+        case amountLow  = "Importo ↑"
     }
 
     // MARK: - Computed Properties
 
-    /// Spese filtrate per periodo e ricerca testuale
+    /// Categorie presenti nei dati (per il picker filtro)
+    private var categorieDisponibili: [String] {
+        let cats = Set(expenseManager.categorieSpese.map { $0.categoria })
+        return ["Tutte"] + cats.sorted()
+    }
+
     private var filteredExpenses: [CategoriaSpesa] {
         let calendar = Calendar.current
         let now = Date()
 
-        let byPeriod: [CategoriaSpesa]
-        switch filterOption {
-        case .all:
-            byPeriod = expenseManager.categorieSpese
+        var result = expenseManager.categorieSpese
+
+        // Filtro periodo
+        switch filterPeriod {
         case .currentMonth:
-            byPeriod = expenseManager.categorieSpese.filter {
-                calendar.isDate($0.data, equalTo: now, toGranularity: .month)
-            }
+            result = result.filter { calendar.isDate($0.data, equalTo: now, toGranularity: .month) }
         case .currentYear:
-            byPeriod = expenseManager.categorieSpese.filter {
-                calendar.isDate($0.data, equalTo: now, toGranularity: .year)
+            result = result.filter { calendar.isDate($0.data, equalTo: now, toGranularity: .year) }
+        case .all:
+            break
+        }
+
+        // Filtro categoria
+        if filterCategoria != "Tutte" {
+            result = result.filter { $0.categoria == filterCategoria }
+        }
+
+        // Ricerca testo
+        if !searchText.isEmpty {
+            result = result.filter {
+                $0.nome.localizedCaseInsensitiveContains(searchText) ||
+                $0.categoria.localizedCaseInsensitiveContains(searchText)
             }
         }
 
-        if searchText.isEmpty {
-            return byPeriod
-        }
-        return byPeriod.filter {
-            $0.nome.localizedCaseInsensitiveContains(searchText)
-        }
-    }
-
-    /// Spese filtrate + ordinate
-    private var sortedExpenses: [CategoriaSpesa] {
+        // Ordinamento
         switch sortOption {
-        case .dateNewest:
-            return filteredExpenses.sorted { $0.data > $1.data }
-        case .dateOldest:
-            return filteredExpenses.sorted { $0.data < $1.data }
-        case .amountHigh:
-            return filteredExpenses.sorted { $0.importo > $1.importo }
-        case .amountLow:
-            return filteredExpenses.sorted { $0.importo < $1.importo }
+        case .dateNewest: return result.sorted { $0.data > $1.data }
+        case .dateOldest: return result.sorted { $0.data < $1.data }
+        case .amountHigh: return result.sorted { $0.importo > $1.importo }
+        case .amountLow:  return result.sorted { $0.importo < $1.importo }
         }
     }
 
-    /// Spese raggruppate per mese
-    private var expensesByMonth: [(month: String, expenses: [CategoriaSpesa])] {
-        let calendar = Calendar.current
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        formatter.locale = Locale(identifier: "it_IT")
-
-        let grouped = Dictionary(grouping: sortedExpenses) { spesa in
-            calendar.dateComponents([.year, .month], from: spesa.data)
-        }
-
-        return grouped
-            .compactMap { components, expenses -> (Date, String, [CategoriaSpesa])? in
-                guard let date = calendar.date(from: components) else { return nil }
-                return (date, formatter.string(from: date).capitalized, expenses)
-            }
-            .sorted { $0.0 > $1.0 }
-            .map { ($0.1, $0.2) }
-    }
-
-    /// Totale delle spese filtrate
     private var totalFiltered: Double {
         filteredExpenses.reduce(0) { $0 + $1.importo }
     }
@@ -122,132 +86,174 @@ struct ExpenseListView: View {
     // MARK: - Body
 
     var body: some View {
-        List {
-            // Header con statistiche
-            Section {
-                VStack(spacing: 8) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Totale Visualizzato")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Text("€\(String(format: "%.2f", totalFiltered))")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.primary)
-                        }
-
-                        Spacer()
-
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Text("Numero Spese")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Text("\(sortedExpenses.count)")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.blue)
-                        }
-                    }
-                    .padding(.vertical, 8)
-                }
-            }
-
-            // Lista spese raggruppate per mese
-            if sortedExpenses.isEmpty {
-                Section {
-                    VStack(spacing: 12) {
-                        Image(systemName: searchText.isEmpty ? "tray" : "magnifyingglass")
-                            .font(.system(size: 40))
-                            .foregroundColor(.secondary)
-
-                        Text(searchText.isEmpty ? "Nessuna spesa trovata" : "Nessun risultato per \"\(searchText)\"")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-
-                        Text(searchText.isEmpty ? "Prova a cambiare i filtri" : "Prova con un altro termine di ricerca")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
-                }
-            } else {
-                ForEach(expensesByMonth, id: \.month) { group in
-                    Section {
-                        ForEach(group.expenses) { spesa in
-                            ExpenseRowFull(
-                                spesa: spesa,
-                                onDelete: {
-                                    expenseManager.rimuoviSpesa(spesa)
-                                }
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                spesaDaModificare = spesa
-                            }
-                        }
-                    } header: {
-                        HStack {
-                            Text(group.month)
-                            Spacer()
-                            let sectionTotal = group.expenses.reduce(0) { $0 + $1.importo }
-                            Text("€\(String(format: "%.2f", sectionTotal))")
-                                .fontWeight(.medium)
-                        }
-                    }
-                }
-            }
+        VStack(spacing: 0) {
+            filterBar
+            list
         }
         .navigationTitle("Tutte le Spese")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
+        .searchable(text: $searchText, prompt: "Cerca per nome o categoria")
         #endif
-        .searchable(text: $searchText, prompt: "Cerca spesa per nome...")
+        .toolbar { toolbarContent }
         .sheet(item: $spesaDaModificare) { spesa in
             AddExpenseView(spesaDaModificare: spesa)
                 .environmentObject(expenseManager)
         }
-        .toolbar {
-            #if os(iOS)
-            ToolbarItem(placement: .navigationBarTrailing) {
-                filterMenu
+    }
+
+    // MARK: - Filter Bar
+
+    private var filterBar: some View {
+        VStack(spacing: 0) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    // Filtro periodo
+                    ForEach(PeriodFilter.allCases, id: \.self) { period in
+                        FilterChip(
+                            label: period.rawValue,
+                            isSelected: filterPeriod == period
+                        ) { filterPeriod = period }
+                    }
+
+                    Divider().frame(height: 24)
+
+                    // Filtro categoria
+                    ForEach(categorieDisponibili, id: \.self) { cat in
+                        FilterChip(
+                            label: cat,
+                            color: cat == "Tutte" ? .blue : CategoriaSpesa.colorForCategoria(cat),
+                            isSelected: filterCategoria == cat
+                        ) { filterCategoria = cat }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
             }
-            #else
-            ToolbarItem(placement: .automatic) {
-                filterMenu
-            }
-            #endif
+            .background(Color.systemBackground)
+            Divider()
         }
     }
 
-    // MARK: - Filter Menu
+    // MARK: - List
 
-    private var filterMenu: some View {
-        Menu {
-            Section("Filtra per") {
-                ForEach(FilterOption.allCases, id: \.self) { option in
-                    Button(action: { filterOption = option }) {
-                        Label(
-                            option.rawValue,
-                            systemImage: option == filterOption ? "checkmark" : option.icon
-                        )
+    private var list: some View {
+        List {
+            // Header totale
+            Section {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Totale")
+                            .font(.caption).foregroundColor(.secondary)
+                        Text("€\(String(format: "%.2f", totalFiltered))")
+                            .font(.title2).fontWeight(.bold)
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("Voci")
+                            .font(.caption).foregroundColor(.secondary)
+                        Text("\(filteredExpenses.count)")
+                            .font(.title2).fontWeight(.bold).foregroundColor(.blue)
                     }
                 }
+                .padding(.vertical, 4)
             }
-            Section("Ordina per") {
-                ForEach(SortOption.allCases, id: \.self) { option in
-                    Button(action: { sortOption = option }) {
-                        Label(
-                            option.rawValue,
-                            systemImage: option == sortOption ? "checkmark" : option.icon
-                        )
+
+            // Righe
+            Section {
+                if filteredExpenses.isEmpty {
+                    ContentUnavailableView(
+                        "Nessuna spesa",
+                        systemImage: "tray",
+                        description: Text("Prova a cambiare i filtri")
+                    )
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 30)
+                } else {
+                    ForEach(filteredExpenses) { spesa in
+                        ExpenseRowFull(spesa: spesa, onDelete: {
+                            expenseManager.rimuoviSpesa(spesa)
+                        })
+                        .contentShape(Rectangle())
+                        .onTapGesture { spesaDaModificare = spesa }
+                        #if os(macOS)
+                        .contextMenu {
+                            Button { spesaDaModificare = spesa } label: {
+                                Label("Modifica", systemImage: "pencil")
+                            }
+                            Button(role: .destructive) {
+                                expenseManager.rimuoviSpesa(spesa)
+                            } label: {
+                                Label("Elimina", systemImage: "trash")
+                            }
+                        }
+                        #endif
                     }
+                    #if os(iOS)
+                    .onDelete { indexSet in
+                        indexSet.map { filteredExpenses[$0] }
+                            .forEach { expenseManager.rimuoviSpesa($0) }
+                    }
+                    #endif
                 }
             }
-        } label: {
-            Image(systemName: "line.3.horizontal.decrease.circle")
         }
+        #if os(macOS)
+        .searchable(text: $searchText, prompt: "Cerca per nome o categoria")
+        #endif
+    }
+
+    // MARK: - Toolbar
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .automatic) {
+            Menu {
+                Section("Ordina per") {
+                    ForEach(SortOption.allCases, id: \.self) { option in
+                        Button {
+                            sortOption = option
+                        } label: {
+                            Label(
+                                option.rawValue,
+                                systemImage: sortOption == option ? "checkmark" : "arrow.up.arrow.down"
+                            )
+                        }
+                    }
+                }
+            } label: {
+                Image(systemName: "arrow.up.arrow.down.circle")
+            }
+        }
+    }
+}
+
+// MARK: - Filter Chip
+
+struct FilterChip: View {
+    let label: String
+    var color: Color = .blue
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(.caption)
+                .fontWeight(isSelected ? .semibold : .regular)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(isSelected ? color.opacity(0.2) : Color.secondary.opacity(0.1))
+                )
+                .foregroundColor(isSelected ? color : .secondary)
+                .overlay(
+                    Capsule()
+                        .strokeBorder(isSelected ? color : Color.clear, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -258,82 +264,65 @@ struct ExpenseRowFull: View {
     var onDelete: (() -> Void)? = nil
 
     private var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        formatter.locale = Locale(identifier: "it_IT")
-        return formatter.string(from: spesa.data)
-    }
-
-    private var relativeDate: String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .short
-        formatter.locale = Locale(identifier: "it_IT")
-        return formatter.localizedString(for: spesa.data, relativeTo: Date())
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .none
+        f.locale = Locale(identifier: "it_IT")
+        return f.string(from: spesa.data)
     }
 
     var body: some View {
         HStack(spacing: 12) {
+            // Barra colore categoria
             RoundedRectangle(cornerRadius: 4)
                 .fill(spesa.colore)
-                .frame(width: 4, height: 50)
+                .frame(width: 4, height: 44)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(spesa.nome)
-                    .font(.headline)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
                     .foregroundColor(.primary)
+                    .lineLimit(1)
 
-                HStack(spacing: 4) {
-                    Image(systemName: "calendar")
+                HStack(spacing: 6) {
+                    // Badge categoria
+                    Text(spesa.categoria)
                         .font(.caption2)
+                        .fontWeight(.medium)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(spesa.colore.opacity(0.15)))
+                        .foregroundColor(spesa.colore)
+
                     Text(formattedDate)
-                        .font(.subheadline)
-                    Text("•")
-                        .font(.caption2)
-                    Text(relativeDate)
                         .font(.caption)
+                        .foregroundColor(.secondary)
                 }
-                .foregroundColor(.secondary)
             }
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("€\(String(format: "%.2f", spesa.importo))")
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(spesa.colore)
-
-                Text("ID: \(spesa.id.uuidString.prefix(8))")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
+            Text("€\(String(format: "%.2f", spesa.importo))")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(.primary)
 
             #if os(macOS)
-            if let onDelete = onDelete {
+            if let onDelete {
                 Button(action: onDelete) {
-                    Image(systemName: "trash")
-                        .foregroundColor(.red)
+                    Image(systemName: "trash").foregroundColor(.red)
                 }
                 .buttonStyle(.plain)
-                .help("Elimina spesa")
             }
             #endif
         }
         .padding(.vertical, 4)
-        #if os(macOS)
-        .contextMenu {
-            if let onDelete = onDelete {
-                Button(role: .destructive, action: onDelete) {
-                    Label("Elimina", systemImage: "trash")
-                }
-            }
-        }
-        #endif
     }
 }
 
 // MARK: - Preview
+
 struct ExpenseListView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {
