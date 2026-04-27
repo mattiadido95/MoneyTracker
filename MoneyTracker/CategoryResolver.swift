@@ -202,65 +202,79 @@ class MockCategoryResolver: CategoryResolver {
     private let categoryRules: [String: [String]] = [
         "Utenze": [
             "luce", "gas", "acqua", "elettricità", "energia",
-            "enel", "eni", "acea", "hera", "a2a",
-            "bolletta", "consumo"
+            "enel", "eni ", "acea", "hera", "a2a", "iren",
+            "bolletta", "consumo", "sdd enel", "sdd iren",
+            "addebito utenza", "utenza"
         ],
         "Telecomunicazioni": [
             "telefono", "internet", "mobile", "cellulare",
-            "tim", "vodafone", "wind", "tre", "iliad", "fastweb",
-            "adsl", "fibra", "ricarica"
+            "tim ", "vodafone", "wind", "iliad", "fastweb", "tiscali",
+            "adsl", "fibra", "sky ", "dazn"
         ],
         "Trasporti": [
             "benzina", "gasolio", "carburante", "diesel",
             "autostrada", "pedaggio", "telepass",
-            "treno", "trenitalia", "italo", "metro", "bus",
-            "taxi", "uber", "parcheggio", "multa"
+            "treno", "trenitalia", "italo", "freccia",
+            "metro", "atm ", "atac", "bus ", "taxi", "uber",
+            "parcheggio", "sosta", "multa",
+            "ip ", "agip", "q8", "esso", "shell", "tamoil", "eni card"
         ],
         "Alimentari": [
-            "supermercato", "spesa", "alimentari",
-            "conad", "coop", "esselunga", "carrefour", "lidl", "eurospin",
-            "pam", "sigma", "iper", "mercato"
+            "supermercato", "alimentari", "drogheria",
+            "conad", "coop ", "esselunga", "carrefour", "lidl",
+            "eurospin", "aldi", "penny", "pam ", "sigma ",
+            "iper", "ipercoop", "simply", "bennet", "unes",
+            "nature", "frutta", "verdura", "macelleria", "panificio",
+            "pane e ", "forno ", "mercato"
         ],
         "Ristorazione": [
             "ristorante", "pizzeria", "trattoria", "osteria",
-            "bar", "caffè", "pub", "bistrot",
-            "mcdonald", "burger", "kfc", "subway",
-            "deliveroo", "glovo", "just eat", "uber eats"
+            "bar ", "caffe", "caffè", "pub ", "bistrot", "gelateria",
+            "mcdonald", "burger king", "kfc", "subway", "old wild",
+            "deliveroo", "glovo", "just eat", "uber eats", "justeat"
         ],
         "Salute": [
             "farmacia", "parafarmacia", "medico", "dottore",
             "ospedale", "clinica", "dentista", "odontoiatra",
-            "visita", "analisi", "esame", "radiografia",
-            "medicina", "farmaco"
+            "analisi", "laboratorio", "ottica", "farmac"
         ],
         "Affitto": [
-            "affitto", "rent", "locazione", "canone",
+            "affitto", "locazione", "canone locazione",
             "condominio", "amministratore"
         ],
         "Intrattenimento": [
             "cinema", "teatro", "spettacolo", "concerto",
-            "netflix", "spotify", "amazon prime", "disney",
+            "netflix", "spotify", "amazon prime", "disney", "apple tv",
             "playstation", "xbox", "steam", "gaming",
-            "palestra", "gym", "fitness"
+            "palestra", "gym", "fitness", "piscina"
         ],
         "Abbigliamento": [
-            "zara", "h&m", "decathlon", "nike", "adidas",
-            "abbigliamento", "vestiti", "scarpe", "calzature"
+            "zara", "h&m", "bershka", "pull&bear", "mango",
+            "decathlon", "nike", "adidas", "footlocker",
+            "abbigliamento", "calzature", "scarpe"
         ],
         "Casa": [
-            "ikea", "leroy merlin", "brico", "fai da te",
-            "arredamento", "mobili", "elettrodomestico"
+            "ikea", "leroy merlin", "brico", "bricocenter",
+            "arredamento", "mobili", "obi ", "castorama",
+            "elettrodomestic", "folletto"
         ],
         "Stipendio": [
-            "stipendio", "salary", "salario", "retribuzione",
-            "accredito", "bonifico stipendio", "cedolino"
+            "stipendio", "salary", "salario", "retribuzione", "cedolino",
+            "accredito stipendio", "pagamento stipendio"
         ],
         "Bonifico": [
-            "bonifico", "trasferimento", "giroconto"
+            "bonifico", "trasferimento", "giroconto", "virement"
         ],
         "Prelievo": [
-            "prelievo", "bancomat", "atm", "cash"
+            "prelievo", "bancomat", "atm ", "cash"
         ]
+    ]
+
+    /// Categorie BPER "specifiche": se keyword matching non trova nulla,
+    /// queste valgono come fallback affidabile.
+    /// "PAGAMENTO" è escluso perché è troppo generico (copre tutto il POS).
+    private let bperSpecificCategories: Set<String> = [
+        "Prelievo", "Bonifico", "Stipendio", "Utenze", "Tasse", "Mutuo"
     ]
     
     /// History di feedback per learning (simulato)
@@ -273,20 +287,11 @@ class MockCategoryResolver: CategoryResolver {
     }
     
     func resolveCategory(for transaction: BankTransaction) async -> CategoryResolutionResult {
-        // Se ha già una categoria, restituiscila con confidenza alta
-        if let existingCategory = transaction.category {
-            return .certain(
-                category: existingCategory,
-                method: .manual,
-                reasoning: "Categoria già presente nella transazione"
-            )
-        }
-        
         let description = transaction.description.lowercased()
         let counterparty = transaction.counterparty?.lowercased() ?? ""
         let searchText = "\(description) \(counterparty)"
-        
-        // 1. Cerca match esatto in feedback history
+
+        // 1. Feedback history ha priorità massima (scelta esplicita dell'utente)
         if let historicalCategory = findInHistory(searchText) {
             return .certain(
                 category: historicalCategory,
@@ -294,73 +299,62 @@ class MockCategoryResolver: CategoryResolver {
                 reasoning: "Categoria appresa da precedenti feedback"
             )
         }
-        
-        // 2. Cerca match con keyword rules
+
+        // 2. Keyword matching sulla descrizione
         var matches: [(category: String, matchCount: Int, keywords: [String])] = []
-        
         for (category, keywords) in categoryRules {
-            let matchedKeywords = keywords.filter { keyword in
-                searchText.contains(keyword)
-            }
-            
+            let matchedKeywords = keywords.filter { searchText.contains($0) }
             if !matchedKeywords.isEmpty {
                 matches.append((category, matchedKeywords.count, matchedKeywords))
             }
         }
-        
-        // 3. Calcola confidenza basata su match
-        if matches.isEmpty {
-            // Nessun match: categoria generica con bassa confidenza
-            let defaultCategory = transaction.type == .income ? "Entrate Varie" : "Spese Varie"
-            return .uncertain(
-                category: defaultCategory,
-                confidence: 0.2,
+
+        if !matches.isEmpty {
+            matches.sort { $0.matchCount > $1.matchCount }
+            let best = matches[0]
+            let second = matches.count > 1 ? matches[1] : nil
+
+            var confidence: Double
+            if best.matchCount >= 3       { confidence = 0.95 }
+            else if best.matchCount == 2  { confidence = 0.85 }
+            else if second == nil         { confidence = 0.75 }
+            else                          { confidence = 0.55 }
+
+            if let s = second, s.matchCount == best.matchCount { confidence *= 0.7 }
+
+            let matchRatio = Double(best.matchCount)
+            let alternatives = matches.dropFirst().prefix(2).map { match in
+                (match.category, confidence * (Double(match.matchCount) / matchRatio) * 0.8)
+            }
+
+            return CategoryResolutionResult(
+                category: best.category,
+                confidence: confidence,
                 method: .ruleBased,
-                reasoning: "Nessuna keyword riconosciuta"
+                alternatives: Array(alternatives),
+                reasoning: "Match keyword: \(best.keywords.joined(separator: ", "))"
             )
         }
-        
-        // Ordina per numero di match
-        matches.sort { $0.matchCount > $1.matchCount }
-        
-        let bestMatch = matches[0]
-        let secondBest = matches.count > 1 ? matches[1] : nil
-        
-        // Calcola confidenza
-        var confidence: Double
-        let matchRatio = Double(bestMatch.matchCount)
-        
-        if bestMatch.matchCount >= 3 {
-            confidence = 0.95  // Molte keyword → alta confidenza
-        } else if bestMatch.matchCount == 2 {
-            confidence = 0.85  // Due keyword → buona confidenza
-        } else if bestMatch.matchCount == 1 && secondBest == nil {
-            confidence = 0.75  // Una keyword, nessuna alternativa
-        } else if bestMatch.matchCount == 1 && secondBest != nil {
-            confidence = 0.55  // Una keyword, ma ci sono alternative
-        } else {
-            confidence = 0.4   // Incerto
+
+        // 3. Nessuna keyword trovata:
+        //    - Se la categoria della banca è "specifica" (es. Prelievo, Bonifico) → usala
+        //    - Se è generica (es. "Pagamento") → fallback a "Spese Varie"
+        if let bankCategory = transaction.category,
+           bperSpecificCategories.contains(bankCategory) {
+            return .uncertain(
+                category: bankCategory,
+                confidence: 0.65,
+                method: .ruleBased,
+                reasoning: "Nessuna keyword: uso categoria banca '\(bankCategory)'"
+            )
         }
-        
-        // Aggiusta confidenza se ci sono match competitivi
-        if let secondBest = secondBest, secondBest.matchCount == bestMatch.matchCount {
-            confidence *= 0.7  // Riduci confidenza se ambiguo
-        }
-        
-        // Crea alternative
-        let alternatives = matches.dropFirst().prefix(2).map { match in
-            let altConfidence = confidence * (Double(match.matchCount) / matchRatio) * 0.8
-            return (match.category, altConfidence)
-        }
-        
-        let reasoning = "Match keyword: \(bestMatch.keywords.joined(separator: ", "))"
-        
-        return CategoryResolutionResult(
-            category: bestMatch.category,
-            confidence: confidence,
+
+        let defaultCategory = transaction.type == .income ? "Stipendio" : "Spese Varie"
+        return .uncertain(
+            category: defaultCategory,
+            confidence: 0.2,
             method: .ruleBased,
-            alternatives: Array(alternatives),
-            reasoning: reasoning
+            reasoning: "Nessuna keyword riconosciuta"
         )
     }
     
