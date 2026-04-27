@@ -49,7 +49,11 @@ struct AddExpenseView: View {
     // MARK: - Environment
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var expenseManager: ExpenseManager
-    
+
+    // MARK: - Modalità (aggiunta o modifica)
+    private let spesaDaModificare: CategoriaSpesa?
+    private var isEditing: Bool { spesaDaModificare != nil }
+
     // MARK: - State
     @State private var nome = ""
     @State private var importoText = ""
@@ -57,9 +61,19 @@ struct AddExpenseView: View {
     @State private var data = Date()
     @State private var selectedCategoria = "Altro"
     @FocusState private var isFocused: Bool
-    
+
+    // MARK: - Init
+
+    init() {
+        self.spesaDaModificare = nil
+    }
+
+    init(spesaDaModificare: CategoriaSpesa) {
+        self.spesaDaModificare = spesaDaModificare
+    }
+
     // MARK: - Computed Properties
-    
+
     /// Verifica se il form è valido
     private var isFormValid: Bool {
         !nome.isEmpty && importoDouble != nil
@@ -104,6 +118,15 @@ struct AddExpenseView: View {
         #if os(macOS)
         .frame(width: 750, height: 650)
         #endif
+        .onAppear {
+            if let s = spesaDaModificare {
+                nome = s.nome
+                importoText = String(format: "%.2f", s.importo)
+                selectedColor = s.colore
+                data = s.data
+                selectedCategoria = s.categoria
+            }
+        }
     }
     
     // MARK: - Form Content
@@ -180,7 +203,7 @@ struct AddExpenseView: View {
                 .disabled(!isFormValid)
             }
         }
-        .navigationTitle("Nuova Spesa")
+        .navigationTitle(isEditing ? "Modifica Spesa" : "Nuova Spesa")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #elseif os(macOS)
@@ -215,16 +238,27 @@ struct AddExpenseView: View {
     
     private func salvaSpesa() {
         guard let importo = importoDouble else { return }
-        
-        let nuovaSpesa = CategoriaSpesa(
-            nome: nome,
-            importo: importo,
-            colore: selectedColor,
-            data: data,
-            categoria: selectedCategoria
-        )
-        
-        expenseManager.aggiungiSpesa(nuovaSpesa)
+
+        if let originale = spesaDaModificare {
+            let aggiornata = CategoriaSpesa(
+                id: originale.id,
+                nome: nome,
+                importo: importo,
+                colore: selectedColor,
+                data: data,
+                categoria: selectedCategoria
+            )
+            expenseManager.aggiornaSpesa(aggiornata)
+        } else {
+            let nuova = CategoriaSpesa(
+                nome: nome,
+                importo: importo,
+                colore: selectedColor,
+                data: data,
+                categoria: selectedCategoria
+            )
+            expenseManager.aggiungiSpesa(nuova)
+        }
         dismiss()
     }
 }

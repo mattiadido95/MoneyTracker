@@ -108,7 +108,14 @@ class ExpenseManager: ObservableObject {
         categorieSpese.removeAll { $0.id == spesa.id }
         // didSet verrà chiamato automaticamente
     }
-    
+
+    /// Aggiorna una spesa esistente (stesso ID)
+    func aggiornaSpesa(_ spesa: CategoriaSpesa) {
+        if let index = categorieSpese.firstIndex(where: { $0.id == spesa.id }) {
+            categorieSpese[index] = spesa
+        }
+    }
+
     /// Rimuove spese agli indici specificati
     func rimuoviSpese(at offsets: IndexSet) {
         categorieSpese.remove(atOffsets: offsets)
