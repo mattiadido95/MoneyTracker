@@ -208,6 +208,7 @@ class MockCategoryResolver: CategoryResolver {
             "eurospin", "aldi", "penny ", "pam ", "sigma ",
             "iper ", "ipercoop", "simply", "bennet", "unes",
             "coal ", "interspar", "unicoop",
+            "ciampalini",                            // macelleria Pisa
             "macelleria", "panificio", "forno ", "mercato rionale"
         ],
 
@@ -232,7 +233,8 @@ class MockCategoryResolver: CategoryResolver {
             "parcheggio", "sosta ",
             "aspit", "bspdv", "eniparki",
             "self nuova oasi", "sozio carburanti",
-            "vomano ovest",
+            "vomano ovest", "45515",                 // benzinaio Pisa via San Pietro
+
             "ip ", "agip", "q8 ", "esso ", "shell ", "tamoil"
         ],
 
@@ -358,6 +360,11 @@ class MockCategoryResolver: CategoryResolver {
         "Carta Prepagata": [
             "carta prepagata", "ric.prep.", "ricarica prepagata",
             "smart web mobile"
+        ],
+
+        // ── PayPal ───────────────────────────────────────────────────────────
+        "PayPal": [
+            "paypal"
         ]
     ]
 
