@@ -209,6 +209,10 @@ class MockCategoryResolver: CategoryResolver {
             "iper ", "ipercoop", "simply", "bennet", "unes",
             "coal ", "interspar", "unicoop",
             "ciampalini",                            // macelleria Pisa
+            "oasi spoltore",                         // supermercato Spoltore
+            "nespresso",                             // caffè
+            "netto ", "sprim fruits", "condis ",     // supermercati esteri
+            "ciurana", "xarcuteria", "carns rp",     // mercati Barcellona
             "macelleria", "panificio", "forno ", "mercato rionale"
         ],
 
@@ -221,6 +225,10 @@ class MockCategoryResolver: CategoryResolver {
             "sushi", "poke", "kitchen", "sali scendi",
             "dabbe", "beerholds", "coyote", "vapori di birra",
             "dreamcream", "giap ", "enodelizie",
+            "five guys", "gourmet burger",           // ristoranti viaggi
+            "mia's fodder", "pavillonen v bi",       // ristoranti Copenhagen
+            "lucky atenea", "sotavento",             // ristoranti Barcellona
+            "chieti food kiosk",                     // food kiosk Chieti
             "deliveroo", "glovo", "just eat", "justeat", "uber eats"
         ],
 
@@ -232,16 +240,25 @@ class MockCategoryResolver: CategoryResolver {
             "metro ", "taxi", "uber ",
             "parcheggio", "sosta ",
             "aspit", "bspdv", "eniparki",
-            "self nuova oasi", "sozio carburanti",
+            "self nuova oasi", "sozio",              // distributore Sozio
             "vomano ovest", "45515",                 // benzinaio Pisa via San Pietro
-
+            "officin",                               // officine/officina meccanico (macrini, chelotti...)
+            "pv4105", "41769", "46163",              // distributori benzina
+            "crf ipe",                               // benzinaio (codice merchant)
+            "ads ",                                  // area di servizio autostradale (chienti, lastra a signa, etc.)
+            "parterre",                              // parcheggio Firenze
+            "aou pisana parcheggi",                  // parcheggio ospedale Pisa
+            "barcelona bus", "autolinee toscane",    // trasporti pubblici
+            "kongens nytorv station", "bella center station", // metro Copenhagen
             "ip ", "agip", "q8 ", "esso ", "shell ", "tamoil"
         ],
 
         // ── Telecomunicazioni ────────────────────────────────────────────────
         "Telecomunicazioni": [
             "vodafone", "tim ", "wind ", "iliad", "fastweb", "tiscali",
-            "adsl", "fibra", "sky ", "dazn",
+            "adsl", "fibra",
+            "sky italia", "sky abbonament", "sdd sky",   // Sky (no "sky " generico → matcha "Bella Sky" hotel)
+            "dazn",
             "bollettino postale"
         ],
 
@@ -260,13 +277,18 @@ class MockCategoryResolver: CategoryResolver {
             "medico", "dottore", "ospedale", "clinica",
             "dentista", "odontoiatra",
             "analisi", "laboratorio", "ottica",
-            "centro di medicina", "centro medico"
+            "centro di medicina", "centro medico",
+            "unobravo",                              // psicoterapia online
+            "prozis",                                // sport nutrition
+            "sanita' regione"                        // ticket sanitario regionale
         ],
 
         // ── Animali ──────────────────────────────────────────────────────────
         "Animali": [
             "zooing", "arcaplanet", "zoonove",
             "veterinario", "centro veterinario",
+            "gamberucci",                            // ambulatorio veterinario Pomarance
+            "adrizoo",                               // negozio animali
             "green fish", "cinofilo",
             "petshop", "pet shop"
         ],
@@ -280,9 +302,10 @@ class MockCategoryResolver: CategoryResolver {
 
         // ── Casa ─────────────────────────────────────────────────────────────
         "Casa": [
-            "ikea", "leroy merlin", "brico", "bricocenter", "bricoman",
+            "ikea", "hfb eco",                       // IKEA (codice merchant Pisa)
+            "leroy merlin", "brico", "bricocenter", "bricoman",
             "obi ", "castorama", "tigota",
-            "arredamento", "mobili", "elettrodomestic",
+            "arredamento", "mobili ", "elettrodomestic",  // "mobili " con spazio → no falso positivo su "mobilita"
             "ipershopping casa", "panda home", "kasanova"
         ],
 
@@ -291,6 +314,7 @@ class MockCategoryResolver: CategoryResolver {
             "zara", "h&m", "bershka", "pull&bear", "mango",
             "decathlon", "nike ", "adidas", "footlocker",
             "intimissimi", "calzedonia", "primark", "pepco",
+            "zalando", "vinted", "magasin",          // e-commerce abbigliamento
             "abbigliamento", "calzature", "scarpe"
         ],
 
@@ -298,6 +322,8 @@ class MockCategoryResolver: CategoryResolver {
         "Intrattenimento": [
             "cinema", "teatro", "spettacolo", "concerto",
             "netflix", "spotify", "amazon prime", "disney", "apple tv",
+            "apple.com bill",                        // App Store / iCloud / abbonamenti Apple
+            "google*google one", "google one",       // Google One storage
             "playstation", "xbox", "steam",
             "palestra", "gym", "fitness", "piscina",
             "padel", "campo sportivo", "associazione sportiva", "asd "
@@ -322,7 +348,9 @@ class MockCategoryResolver: CategoryResolver {
             "commissioni bonifici", "commissioni carta",
             "commissioni pagamento", "comm. su ric",
             "imposta di bollo", "competenze spese",
-            "canone conto", "spese tenuta conto"
+            "canone conto", "spese tenuta conto",
+            "addebito canone", "addebito bollo",     // canone mensile + bollo carta prepagata
+            "commissioni - "                          // commissioni FX (sempre prefisso "COMMISSIONI - merchant")
         ],
 
         // ── Tasse ────────────────────────────────────────────────────────────
@@ -334,14 +362,22 @@ class MockCategoryResolver: CategoryResolver {
         // ── Istruzione ───────────────────────────────────────────────────────
         "Istruzione": [
             "universita", "università", "ecampus", "e-campus",
-            "scuola", "formazione", "tasse universitarie"
+            "scuola", "formazione", "tasse universitarie",
+            "copyer",                                // copisteria universitaria
+            "compilatio.net"                         // anti-plagio universitario
         ],
 
         // ── Viaggi ───────────────────────────────────────────────────────────
         "Viaggi": [
             "ryanair", "alitalia", "vueling", "easyjet", "wizz",
             "hotel", "airbnb", "booking.com",
-            "traghetto", "crociera"
+            "traghetto", "crociera",
+            "front desk bella sky", "hp fly hotel",  // hotel
+            "gebr. heinemann", "zettle_*danish",     // duty-free + souvenir
+            "the lilith and sons",                   // bar/ristorante Barcellona viaggio
+            "cogas mobilita",                        // trasporti viaggio
+            "t1046", "areas -ai girona",             // food court aeroporto Girona
+            "foodies c dd aero"                      // food aeroporto
         ],
 
         // ── Stipendio ────────────────────────────────────────────────────────
@@ -365,6 +401,28 @@ class MockCategoryResolver: CategoryResolver {
         // ── PayPal ───────────────────────────────────────────────────────────
         "PayPal": [
             "paypal"
+        ],
+
+        // ── AI Tool ──────────────────────────────────────────────────────────
+        "AI Tool": [
+            "claude.ai", "anthropic",
+            "openai", "chatgpt",
+            "perplexity",
+            "gamma.app", "midjourney"
+        ],
+
+        // ── TEST ─────────────────────────────────────────────────────────────
+        "TEST": [
+            "onlyfans",
+            "cheapside",                             // 107 Cheapside London = OnlyFans HQ
+            "first floor great portland",            // altra sede OnlyFans
+            "of london"                              // pattern bancario abbreviato
+        ],
+
+        // ── Spese Varie ──────────────────────────────────────────────────────
+        "Spese Varie": [
+            "amazon", "amzn mktp",                   // Amazon (troppo generico per categoria specifica)
+            "e charme"                               // negozio Bomporto
         ]
     ]
 

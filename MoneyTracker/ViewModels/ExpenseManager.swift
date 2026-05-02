@@ -116,6 +116,25 @@ class ExpenseManager: ObservableObject {
         }
     }
 
+    /// Cambia categoria a un insieme di spese in batch (un singolo didSet → un solo save)
+    func cambiaCategoriaMultiple(ids: Set<UUID>, nuovaCategoria: String) {
+        guard !ids.isEmpty else { return }
+        let nuovoColore = CategoriaSpesa.colorForCategoria(nuovaCategoria)
+        var updated = categorieSpese
+        for i in updated.indices where ids.contains(updated[i].id) {
+            let originale = updated[i]
+            updated[i] = CategoriaSpesa(
+                id: originale.id,
+                nome: originale.nome,
+                importo: originale.importo,
+                colore: nuovoColore,
+                data: originale.data,
+                categoria: nuovaCategoria
+            )
+        }
+        categorieSpese = updated
+    }
+
     /// Rimuove spese agli indici specificati
     func rimuoviSpese(at offsets: IndexSet) {
         categorieSpese.remove(atOffsets: offsets)

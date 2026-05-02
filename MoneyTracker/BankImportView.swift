@@ -55,22 +55,47 @@ private extension Color {
 }
 
 struct BankImportView: View {
-    
+
+    // MARK: - Tipo Import
+
+    enum TipoImport: String, CaseIterable {
+        case contoCorrente  = "Conto Corrente"
+        case cartaPrepagata = "Carta Prepagata"
+
+        var icon: String {
+            switch self {
+            case .contoCorrente:  return "building.columns.fill"
+            case .cartaPrepagata: return "creditcard.fill"
+            }
+        }
+
+        var descrizione: String {
+            switch self {
+            case .contoCorrente:
+                return "Le ricariche alla carta prepagata verranno escluse automaticamente"
+            case .cartaPrepagata:
+                return "Tutte le transazioni vengono importate e categorizzate"
+            }
+        }
+    }
+
     // MARK: - Environment
-    
+
     @EnvironmentObject var expenseManager: ExpenseManager
     @Environment(\.dismiss) var dismiss
-    
+
     // MARK: - State
-    
+
     @StateObject private var viewModel = BankImportViewModel()
-    
+
+    @State private var tipoImport: TipoImport = .contoCorrente
+
     /// Mostra file importer
     @State private var showFileImporter = false
-    
+
     /// Mostra sheet dettagli
     @State private var showDetailsSheet = false
-    
+
     /// Mostra alert export success
     @State private var showExportAlert = false
     @State private var exportedFileURL: URL?
@@ -167,20 +192,36 @@ struct BankImportView: View {
     }
     
     // MARK: - Header Section
-    
+
     private var headerSection: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "doc.text.fill")
+        VStack(spacing: 16) {
+            Image(systemName: tipoImport.icon)
                 .font(.system(size: 48))
                 .foregroundColor(.accentColor)
-            
-            Text("Importa Estratto Conto Bancario")
+
+            Text("Import \(tipoImport.rawValue)")
                 .font(.title2)
                 .fontWeight(.semibold)
-            
-            Text("Seleziona un file XLS o XLSX per importare le transazioni")
-                .font(.subheadline)
+
+            // Picker tipo conto
+            Picker("Tipo conto", selection: $tipoImport) {
+                ForEach(TipoImport.allCases, id: \.self) { tipo in
+                    Label(tipo.rawValue, systemImage: tipo.icon).tag(tipo)
+                }
+            }
+            .pickerStyle(.segmented)
+            .frame(maxWidth: 400)
+            .onChange(of: tipoImport) { _, _ in
+                // Se l'utente cambia tipo dopo aver caricato un file, resettiamo
+                if viewModel.importState.isSuccess {
+                    viewModel.reset()
+                }
+            }
+
+            Text(tipoImport.descrizione)
+                .font(.caption)
                 .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
         }
     }
     
@@ -470,14 +511,33 @@ struct BankImportView: View {
         }
     }
     
+    /// Restituisce true se la transazione è una ricarica carta prepagata
+    private func isRicaricaPrepagata(_ tx: BankTransaction) -> Bool {
+        let desc = tx.description.lowercased()
+        return desc.contains("carta prepagata") ||
+               desc.contains("ric.prep.")       ||
+               desc.contains("smart web mobile")
+    }
+
     private func confirmImport() {
         guard let bankImport = viewModel.bankImport else { return }
 
         Task {
             let resolver = MockCategoryResolver()
-            let expenses = bankImport.transactions.filter { $0.type == .expense }
 
-            // Categorizza ogni transazione con MockCategoryResolver
+            // Filtra solo le uscite
+            var expenses = bankImport.transactions.filter { $0.type == .expense }
+            let entrate = bankImport.transactions.count - expenses.count
+
+            // Se è un conto corrente, scarta le ricariche prepagata
+            var ricaricheScartate = 0
+            if tipoImport == .contoCorrente {
+                let before = expenses.count
+                expenses = expenses.filter { !isRicaricaPrepagata($0) }
+                ricaricheScartate = before - expenses.count
+            }
+
+            // Categorizza ogni transazione
             var nuoveSpese: [CategoriaSpesa] = []
             for tx in expenses {
                 let result = await resolver.resolveCategory(for: tx)
@@ -491,18 +551,21 @@ struct BankImportView: View {
                 nuoveSpese.append(spesa)
             }
 
-            // Batch insert — didSet si attiva una volta sola → un solo salvataggio
+            // Batch insert
             expenseManager.categorieSpese.append(contentsOf: nuoveSpese)
 
-            let skipped = bankImport.transactions.count - expenses.count
-            var msg = "Aggiunte \(nuoveSpese.count) spese da \(bankImport.bankName)."
-            if skipped > 0 {
-                msg += "\n(\(skipped) entrate escluse)"
+            // Messaggio di conferma dettagliato
+            var msg = "✅ \(nuoveSpese.count) spese importate da \(bankImport.bankName)."
+            if entrate > 0 {
+                msg += "\n• \(entrate) entrate escluse"
+            }
+            if ricaricheScartate > 0 {
+                msg += "\n• \(ricaricheScartate) ricariche carta prepagata escluse"
             }
             confirmAlertMessage = msg
             showConfirmAlert = true
 
-            print("✅ Import confermato: \(nuoveSpese.count) spese aggiunte, \(skipped) entrate saltate")
+            print("✅ Import confermato: \(nuoveSpese.count) spese, \(entrate) entrate, \(ricaricheScartate) ricariche prepagata saltate")
         }
     }
 }

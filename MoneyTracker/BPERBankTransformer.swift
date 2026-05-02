@@ -43,6 +43,8 @@ class BPERBankTransformer: DefaultBankTransformer {
     static let colEntrate        = "Entrate"
     static let colUscite         = "Uscite"
     static let colCategoria      = "Categoria"
+    /// Carta prepagata BPER: colonna unica con segno (negativo = spesa, positivo = ricarica)
+    static let colImporto        = "Importo €"
 
     // MARK: - Init
 
@@ -90,21 +92,31 @@ class BPERBankTransformer: DefaultBankTransformer {
         }
         let description = normalizeDescription(rawDescription)
 
-        // ── 3. Importo + Tipo (Entrate / Uscite) ─────────────────────────────
+        // ── 3. Importo + Tipo ───────────────────────────────────────────────
+        // Due formati BPER supportati:
+        //   • Conto Corrente: colonne separate "Entrate" e "Uscite"
+        //   • Carta Prepagata: colonna unica "Importo €" (positivo = ricarica, negativo = spesa)
         let entrateStr = row.value(forKey: Self.colEntrate) ?? ""
         let usciteStr  = row.value(forKey: Self.colUscite)  ?? ""
+        let importoStr = row.value(forKey: Self.colImporto) ?? ""
 
         let amount: Double
         let type: TransactionType
 
         if let entrate = parseNumericAmount(entrateStr), entrate > 0 {
+            // Conto Corrente: entrata
             amount = entrate
             type   = .income
         } else if let uscite = parseNumericAmount(usciteStr), uscite != 0 {
+            // Conto Corrente: uscita
             amount = abs(uscite)
             type   = .expense
+        } else if let importo = parseNumericAmount(importoStr), importo != 0 {
+            // Carta Prepagata: importo unico con segno
+            amount = abs(importo)
+            type   = importo < 0 ? .expense : .income
         } else {
-            throw BankImportError.missingRequiredField(field: "Entrate/Uscite")
+            throw BankImportError.missingRequiredField(field: "Entrate/Uscite/Importo")
         }
 
         // ── 4. Categoria ─────────────────────────────────────────────────────

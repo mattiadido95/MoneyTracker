@@ -39,44 +39,42 @@ struct StatisticsView: View {
     @EnvironmentObject var expenseManager: ExpenseManager
     
     // MARK: - State
-    @State private var selectedPeriod: TimePeriod = .threeMonths
-    @State private var selectedCategory: String?
-    
-    // MARK: - Enums
-    
-    enum TimePeriod: String, CaseIterable {
-        case oneMonth = "1 Mese"
-        case threeMonths = "3 Mesi"
-        case sixMonths = "6 Mesi"
-        case oneYear = "1 Anno"
-        case all = "Tutto"
-        
-        var months: Int? {
-            switch self {
-            case .oneMonth: return 1
-            case .threeMonths: return 3
-            case .sixMonths: return 6
-            case .oneYear: return 12
-            case .all: return nil
-            }
+
+    @State private var dateFrom: Date = Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date()
+    @State private var dateTo: Date   = Date()
+    @State private var selectedCategories: Set<String> = Set(CategoriaSpesa.allCategorie)
+    @State private var showCategoryPicker: Bool = false
+
+    // MARK: - Computed Properties
+
+    /// Spese filtrate per range date + categorie selezionate
+    private var filteredExpenses: [CategoriaSpesa] {
+        let calendar = Calendar.current
+        // Estendi dateTo a fine giornata per includere spese registrate quel giorno
+        let endOfDay = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: dateTo) ?? dateTo
+        return expenseManager.categorieSpese.filter { spesa in
+            spesa.data >= dateFrom &&
+            spesa.data <= endOfDay &&
+            selectedCategories.contains(spesa.categoria)
         }
     }
-    
-    // MARK: - Computed Properties
-    
-    /// Spese nel periodo selezionato
-    private var filteredExpenses: [CategoriaSpesa] {
-        guard let months = selectedPeriod.months else {
-            return expenseManager.categorieSpese
-        }
-        
+
+    /// Etichetta del bottone categorie (es. "Tutte le categorie", "5 selezionate")
+    private var categoriesButtonLabel: String {
+        let total = CategoriaSpesa.allCategorie.count
+        if selectedCategories.count == total { return "Tutte le categorie" }
+        if selectedCategories.isEmpty         { return "Nessuna categoria" }
+        if selectedCategories.count == 1      { return selectedCategories.first ?? "1 categoria" }
+        return "\(selectedCategories.count) di \(total) selezionate"
+    }
+
+    /// Numero di giorni nel range selezionato
+    private var daysInRange: Int {
         let calendar = Calendar.current
-        let now = Date()
-        guard let cutoffDate = calendar.date(byAdding: .month, value: -months, to: now) else {
-            return expenseManager.categorieSpese
-        }
-        
-        return expenseManager.categorieSpese.filter { $0.data >= cutoffDate }
+        let from = calendar.startOfDay(for: dateFrom)
+        let to   = calendar.startOfDay(for: dateTo)
+        let days = calendar.dateComponents([.day], from: from, to: to).day ?? 0
+        return max(days + 1, 1)
     }
     
     /// Spese raggruppate per categoria
@@ -115,50 +113,412 @@ struct StatisticsView: View {
     private var totalPeriod: Double {
         filteredExpenses.reduce(0) { $0 + $1.importo }
     }
-    
+
     /// Media per mese
     private var averagePerMonth: Double {
         let months = max(expensesByMonth.count, 1)
         return totalPeriod / Double(months)
     }
+
+    /// Top 10 spese più costose nel periodo filtrato
+    private var topMovimenti: [CategoriaSpesa] {
+        Array(filteredExpenses.sorted { $0.importo > $1.importo }.prefix(10))
+    }
     
     // MARK: - Body
     
     var body: some View {
+        #if os(macOS)
+        // ────────────────── macOS: sidebar + 2x2 grid ──────────────────
+        HStack(spacing: 0) {
+            sidebarFiltri
+                .frame(width: 280)
+                .background(Color.systemGroupedBackground)
+            Divider()
+            ScrollView {
+                mainContent
+                    .padding(20)
+            }
+        }
+        .navigationTitle("Statistiche")
+        #else
+        // ────────────────── iOS: scroll verticale ──────────────────
         ScrollView {
-            VStack(spacing: 24) {
-                
-                // Header con statistiche chiave
+            VStack(spacing: 20) {
+                filterSection
                 statisticsHeader
-                
-                // Grafico a barre - Spese per categoria
                 categoryBarChart
-                
-                // Grafico a linee - Andamento mensile
                 monthlyLineChart
-                
-                // Grafico a torta - Distribuzione
                 distributionPieChart
-                
+                topMovimentiPanel
                 Spacer(minLength: 20)
             }
             .padding(.horizontal, 16)
+            .padding(.top, 12)
         }
         .navigationTitle("Statistiche")
-        #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
-        #endif
-        .toolbar {
-            #if os(iOS)
-            ToolbarItem(placement: .navigationBarTrailing) {
-                periodFilterMenu
-            }
-            #else
-            ToolbarItem(placement: .automatic) {
-                periodFilterMenu
-            }
-            #endif
+        .sheet(isPresented: $showCategoryPicker) {
+            MultiCategoryPickerSheet(selected: $selectedCategories)
         }
+        #endif
+    }
+
+    // MARK: - macOS Layout
+
+    /// Contenuto principale macOS: KPI row + 2x2 chart grid
+    @ViewBuilder
+    private var mainContent: some View {
+        VStack(spacing: 16) {
+            // KPI row (4 cards in linea)
+            HStack(spacing: 12) {
+                StatCard(title: "Totale Periodo",
+                         value: "€\(String(format: "%.2f", totalPeriod))",
+                         icon: "chart.bar.fill", color: .blue)
+                StatCard(title: "Media Mensile",
+                         value: "€\(String(format: "%.2f", averagePerMonth))",
+                         icon: "chart.line.uptrend.xyaxis", color: .green)
+                StatCard(title: "Numero Spese",
+                         value: "\(filteredExpenses.count)",
+                         icon: "number", color: .orange)
+                StatCard(title: "Giorni",
+                         value: "\(daysInRange)",
+                         icon: "calendar", color: .purple)
+            }
+
+            // 2x2 chart grid
+            HStack(alignment: .top, spacing: 16) {
+                categoryBarChart
+                monthlyLineChart
+            }
+            HStack(alignment: .top, spacing: 16) {
+                distributionPieChart
+                topMovimentiPanel
+            }
+        }
+    }
+
+    // MARK: - Sidebar (macOS)
+
+    private var sidebarFiltri: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+
+                // ── Sezione PERIODO ──
+                sidebarSection(title: "Periodo", icon: "calendar") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Da").font(.caption).foregroundColor(.secondary)
+                            DatePicker("", selection: $dateFrom, in: ...dateTo, displayedComponents: .date)
+                                .labelsHidden()
+                                .environment(\.locale, Locale(identifier: "it_IT"))
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("A").font(.caption).foregroundColor(.secondary)
+                            DatePicker("", selection: $dateTo, in: dateFrom..., displayedComponents: .date)
+                                .labelsHidden()
+                                .environment(\.locale, Locale(identifier: "it_IT"))
+                        }
+                    }
+                }
+
+                // ── Sezione PRESET ──
+                sidebarSection(title: "Preset", icon: "bolt.fill") {
+                    VStack(spacing: 6) {
+                        sidebarPresetButton("Ultimo mese")    { setRange(months: 1) }
+                        sidebarPresetButton("Ultimi 3 mesi")  { setRange(months: 3) }
+                        sidebarPresetButton("Ultimi 6 mesi")  { setRange(months: 6) }
+                        sidebarPresetButton("Ultimo anno")    { setRange(months: 12) }
+                        Divider()
+                        let currentYear = Calendar.current.component(.year, from: Date())
+                        ForEach((2022...currentYear).reversed(), id: \.self) { year in
+                            sidebarPresetButton("\(year)") { setRangeYear(year) }
+                        }
+                        Divider()
+                        sidebarPresetButton("Tutto") { setRangeAll() }
+                        Button(role: .destructive) { resetFilters() } label: {
+                            HStack {
+                                Image(systemName: "arrow.counterclockwise")
+                                Text("Reset filtri")
+                                Spacer()
+                            }
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundColor(.red)
+                    }
+                }
+
+                // ── Sezione CATEGORIE ──
+                sidebarSection(
+                    title: "Categorie",
+                    icon: "tag.fill",
+                    trailing: Text("\(selectedCategories.count)/\(CategoriaSpesa.allCategorie.count)")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundColor(.secondary)
+                ) {
+                    VStack(spacing: 4) {
+                        // Quick toggle Tutte/Nessuna
+                        HStack(spacing: 6) {
+                            Button("Tutte") { selectedCategories = Set(CategoriaSpesa.allCategorie) }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .tint(.indigo)
+                            Button("Nessuna") { selectedCategories.removeAll() }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            Spacer()
+                        }
+                        .padding(.bottom, 4)
+
+                        ForEach(CategoriaSpesa.allCategorie, id: \.self) { cat in
+                            Button {
+                                if selectedCategories.contains(cat) {
+                                    selectedCategories.remove(cat)
+                                } else {
+                                    selectedCategories.insert(cat)
+                                }
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: selectedCategories.contains(cat) ? "checkmark.square.fill" : "square")
+                                        .foregroundColor(selectedCategories.contains(cat) ? .indigo : .secondary)
+                                    Circle()
+                                        .fill(CategoriaSpesa.colorForCategoria(cat))
+                                        .frame(width: 8, height: 8)
+                                    Text(cat)
+                                        .font(.caption)
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                }
+                                .padding(.vertical, 3)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .padding(16)
+        }
+    }
+
+    private func sidebarPresetButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Text(title).font(.caption)
+                Spacer()
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.secondary.opacity(0.08))
+        )
+    }
+
+    @ViewBuilder
+    private func sidebarSection<Content: View, Trailing: View>(
+        title: String,
+        icon: String,
+        @ViewBuilder trailing: () -> Trailing = { EmptyView() },
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.caption)
+                    .foregroundColor(.indigo)
+                Text(title.uppercased())
+                    .font(.caption.weight(.bold))
+                    .foregroundColor(.secondary)
+                    .tracking(0.6)
+                Spacer()
+                trailing()
+            }
+            content()
+        }
+    }
+
+    // Overload semplice per chiamare senza trailing
+    @ViewBuilder
+    private func sidebarSection<Content: View>(
+        title: String,
+        icon: String,
+        trailing: some View,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        sidebarSection(title: title, icon: icon, trailing: { trailing }, content: content)
+    }
+
+    // MARK: - Top Movimenti Panel
+
+    private var topMovimentiPanel: some View {
+        ChartCard(title: "Top movimenti") {
+            if topMovimenti.isEmpty {
+                emptyChartPlaceholder
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(topMovimenti) { spesa in
+                        HStack(spacing: 10) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(spesa.colore)
+                                .frame(width: 3, height: 32)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(spesa.nome)
+                                    .font(.subheadline.weight(.medium))
+                                    .lineLimit(1)
+                                HStack(spacing: 6) {
+                                    Text(spesa.categoria)
+                                        .font(.caption2.weight(.medium))
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 1)
+                                        .background(Capsule().fill(spesa.colore.opacity(0.15)))
+                                        .foregroundColor(spesa.colore)
+                                    Text(formatDate(spesa.data))
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            Spacer()
+                            Text("€\(String(format: "%.2f", spesa.importo))")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "d MMM"
+        f.locale = Locale(identifier: "it_IT")
+        return f.string(from: date)
+    }
+
+    // MARK: - Filter Section
+
+    private var filterSection: some View {
+        VStack(spacing: 14) {
+            // Header sezione + menu preset
+            HStack {
+                Image(systemName: "slider.horizontal.3")
+                    .foregroundColor(.indigo)
+                Text("Filtri")
+                    .font(.headline)
+                Spacer()
+                Menu {
+                    Section("Periodo rapido") {
+                        Button("Ultimo mese")     { setRange(months: 1) }
+                        Button("Ultimi 3 mesi")   { setRange(months: 3) }
+                        Button("Ultimi 6 mesi")   { setRange(months: 6) }
+                        Button("Ultimo anno")     { setRange(months: 12) }
+                    }
+                    Section("Anno") {
+                        let currentYear = Calendar.current.component(.year, from: Date())
+                        ForEach((2022...currentYear).reversed(), id: \.self) { year in
+                            Button("\(year)") { setRangeYear(year) }
+                        }
+                    }
+                    Section {
+                        Button("Tutto") { setRangeAll() }
+                        Button("Reset filtri", role: .destructive) { resetFilters() }
+                    }
+                } label: {
+                    Label("Preset", systemImage: "ellipsis.circle")
+                        .font(.subheadline)
+                        .foregroundColor(.indigo)
+                }
+            }
+
+            // Date range
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Da")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    DatePicker("", selection: $dateFrom, in: ...dateTo, displayedComponents: .date)
+                        .labelsHidden()
+                        .environment(\.locale, Locale(identifier: "it_IT"))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("A")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    DatePicker("", selection: $dateTo, in: dateFrom..., displayedComponents: .date)
+                        .labelsHidden()
+                        .environment(\.locale, Locale(identifier: "it_IT"))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            // Multi-select categorie
+            Button {
+                showCategoryPicker = true
+            } label: {
+                HStack {
+                    Image(systemName: "tag.fill")
+                        .foregroundColor(.indigo)
+                    Text(categoriesButtonLabel)
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .font(.subheadline)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.secondary.opacity(0.12))
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.systemBackground)
+                .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 1)
+        )
+    }
+
+    // MARK: - Filter Helpers
+
+    private func setRange(months: Int) {
+        let calendar = Calendar.current
+        let now = Date()
+        dateTo = now
+        dateFrom = calendar.date(byAdding: .month, value: -months, to: now) ?? now
+    }
+
+    private func setRangeYear(_ year: Int) {
+        let calendar = Calendar.current
+        let from = calendar.date(from: DateComponents(year: year, month: 1, day: 1)) ?? Date()
+        let to   = calendar.date(from: DateComponents(year: year, month: 12, day: 31)) ?? Date()
+        dateFrom = from
+        dateTo   = to
+    }
+
+    private func setRangeAll() {
+        let allDates = expenseManager.categorieSpese.map { $0.data }
+        dateFrom = allDates.min() ?? Date()
+        dateTo   = allDates.max() ?? Date()
+    }
+
+    private func resetFilters() {
+        let calendar = Calendar.current
+        let now = Date()
+        dateTo = now
+        dateFrom = calendar.date(byAdding: .month, value: -3, to: now) ?? now
+        selectedCategories = Set(CategoriaSpesa.allCategorie)
     }
     
     // MARK: - Components
@@ -191,8 +551,8 @@ struct StatisticsView: View {
                 )
                 
                 StatCard(
-                    title: "Periodo",
-                    value: selectedPeriod.rawValue,
+                    title: "Giorni",
+                    value: "\(daysInRange)",
                     icon: "calendar",
                     color: .purple
                 )
@@ -325,22 +685,6 @@ struct StatisticsView: View {
         }
     }
     
-    /// Menu filtro periodo
-    private var periodFilterMenu: some View {
-        Menu {
-            ForEach(TimePeriod.allCases, id: \.self) { period in
-                Button(action: { selectedPeriod = period }) {
-                    Label(
-                        period.rawValue,
-                        systemImage: selectedPeriod == period ? "checkmark" : "calendar"
-                    )
-                }
-            }
-        } label: {
-            Image(systemName: "slider.horizontal.3")
-        }
-    }
-    
     /// Placeholder per grafici vuoti
     private var emptyChartPlaceholder: some View {
         VStack(spacing: 12) {
@@ -421,6 +765,78 @@ struct ChartCard<Content: View>: View {
                 .fill(Color.systemBackground)
                 .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 1)
         )
+    }
+}
+
+// MARK: - Multi Category Picker Sheet
+
+struct MultiCategoryPickerSheet: View {
+    @Binding var selected: Set<String>
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    HStack {
+                        Button {
+                            selected = Set(CategoriaSpesa.allCategorie)
+                        } label: {
+                            Label("Tutte", systemImage: "checkmark.circle.fill")
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(.indigo)
+
+                        Button {
+                            selected.removeAll()
+                        } label: {
+                            Label("Nessuna", systemImage: "xmark.circle")
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(.secondary)
+
+                        Spacer()
+                    }
+                }
+                Section("Categorie (\(selected.count) selezionate)") {
+                    ForEach(CategoriaSpesa.allCategorie, id: \.self) { cat in
+                        Button {
+                            if selected.contains(cat) {
+                                selected.remove(cat)
+                            } else {
+                                selected.insert(cat)
+                            }
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: selected.contains(cat) ? "checkmark.circle.fill" : "circle")
+                                    .foregroundColor(selected.contains(cat) ? .indigo : .secondary)
+                                    .font(.title3)
+                                Circle()
+                                    .fill(CategoriaSpesa.colorForCategoria(cat))
+                                    .frame(width: 14, height: 14)
+                                Text(cat)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Filtra categorie")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Fatto") { dismiss() }
+                }
+            }
+        }
+        #if os(iOS)
+        .presentationDetents([.large])
+        #elseif os(macOS)
+        .frame(minWidth: 500, idealWidth: 550, minHeight: 600, idealHeight: 700)
+        #endif
     }
 }
 

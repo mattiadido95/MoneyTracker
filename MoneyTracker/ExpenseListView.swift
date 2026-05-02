@@ -11,19 +11,29 @@ struct ExpenseListView: View {
     @EnvironmentObject var expenseManager: ExpenseManager
 
     // MARK: - State
-    @State private var filterPeriod: PeriodFilter = .all
-    @State private var filterCategoria: String = "Tutte"
+
+    @State private var dateFrom: Date = Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date()
+    @State private var dateTo: Date   = Date()
+    @State private var selectedFilterCategories: Set<String> = Set(CategoriaSpesa.allCategorie)
+    @State private var showFilterCategoryPicker: Bool = false
+
     @State private var sortOption: SortOption = .dateNewest
     @State private var searchText: String = ""
     @State private var spesaDaModificare: CategoriaSpesa?
+    @State private var visibleCount: Int = 25
+
+    // Selezione multipla (bulk edit)
+    @State private var isSelecting: Bool = false
+    @State private var selectedIDs: Set<UUID> = []
+    @State private var showCategoryPicker: Bool = false
+
+    private let pageSize = 25
+
+    private var allVisibleSelected: Bool {
+        !visibleExpenses.isEmpty && visibleExpenses.allSatisfy { selectedIDs.contains($0.id) }
+    }
 
     // MARK: - Enums
-
-    enum PeriodFilter: String, CaseIterable {
-        case all          = "Tutte"
-        case currentMonth = "Questo Mese"
-        case currentYear  = "Quest'Anno"
-    }
 
     enum SortOption: String, CaseIterable {
         case dateNewest = "Più Recenti"
@@ -34,31 +44,23 @@ struct ExpenseListView: View {
 
     // MARK: - Computed Properties
 
-    /// Categorie presenti nei dati (per il picker filtro)
-    private var categorieDisponibili: [String] {
-        let cats = Set(expenseManager.categorieSpese.map { $0.categoria })
-        return ["Tutte"] + cats.sorted()
+    /// Etichetta del bottone categorie
+    private var categoriesButtonLabel: String {
+        let total = CategoriaSpesa.allCategorie.count
+        if selectedFilterCategories.count == total { return "Tutte le categorie" }
+        if selectedFilterCategories.isEmpty         { return "Nessuna categoria" }
+        if selectedFilterCategories.count == 1      { return selectedFilterCategories.first ?? "1 categoria" }
+        return "\(selectedFilterCategories.count) di \(total) selezionate"
     }
 
     private var filteredExpenses: [CategoriaSpesa] {
         let calendar = Calendar.current
-        let now = Date()
+        let endOfDay = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: dateTo) ?? dateTo
 
-        var result = expenseManager.categorieSpese
-
-        // Filtro periodo
-        switch filterPeriod {
-        case .currentMonth:
-            result = result.filter { calendar.isDate($0.data, equalTo: now, toGranularity: .month) }
-        case .currentYear:
-            result = result.filter { calendar.isDate($0.data, equalTo: now, toGranularity: .year) }
-        case .all:
-            break
-        }
-
-        // Filtro categoria
-        if filterCategoria != "Tutte" {
-            result = result.filter { $0.categoria == filterCategoria }
+        var result = expenseManager.categorieSpese.filter { spesa in
+            spesa.data >= dateFrom &&
+            spesa.data <= endOfDay &&
+            selectedFilterCategories.contains(spesa.categoria)
         }
 
         // Ricerca testo
@@ -82,11 +84,23 @@ struct ExpenseListView: View {
         filteredExpenses.reduce(0) { $0 + $1.importo }
     }
 
+    /// Slice visibile in base alla paginazione
+    private var visibleExpenses: [CategoriaSpesa] {
+        Array(filteredExpenses.prefix(visibleCount))
+    }
+
+    private var hasMore: Bool {
+        visibleCount < filteredExpenses.count
+    }
+
     // MARK: - Body
 
     var body: some View {
         VStack(spacing: 0) {
-            filterBar
+            filterSection
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
             list
         }
         .navigationTitle("Tutte le Spese")
@@ -95,43 +109,151 @@ struct ExpenseListView: View {
         .searchable(text: $searchText, prompt: "Cerca per nome o categoria")
         #endif
         .toolbar { toolbarContent }
+        .safeAreaInset(edge: .bottom) {
+            if isSelecting { selectionActionBar }
+        }
         .sheet(item: $spesaDaModificare) { spesa in
             AddExpenseView(spesaDaModificare: spesa)
                 .environmentObject(expenseManager)
         }
+        .sheet(isPresented: $showCategoryPicker) {
+            BulkCategoryPickerSheet(
+                count: selectedIDs.count,
+                onSelect: { cat in
+                    applyBulkCategory(cat)
+                },
+                onCancel: { showCategoryPicker = false }
+            )
+        }
+        .sheet(isPresented: $showFilterCategoryPicker) {
+            MultiCategoryPickerSheet(selected: $selectedFilterCategories)
+        }
+        .onChange(of: dateFrom)                 { _, _ in visibleCount = pageSize }
+        .onChange(of: dateTo)                   { _, _ in visibleCount = pageSize }
+        .onChange(of: selectedFilterCategories) { _, _ in visibleCount = pageSize }
+        .onChange(of: searchText)               { _, _ in visibleCount = pageSize }
+        .onChange(of: sortOption)               { _, _ in visibleCount = pageSize }
     }
 
-    // MARK: - Filter Bar
+    // MARK: - Filter Section
 
-    private var filterBar: some View {
-        VStack(spacing: 0) {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                // Filtro periodo
-                ForEach(PeriodFilter.allCases, id: \.self) { period in
-                    FilterChip(
-                        label: period.rawValue,
-                        isSelected: filterPeriod == period
-                    ) { filterPeriod = period }
-                }
-
-                Divider().frame(height: 24)
-
-                // Filtro categoria
-                ForEach(categorieDisponibili, id: \.self) { cat in
-                    FilterChip(
-                        label: cat,
-                        color: cat == "Tutte" ? .blue : CategoriaSpesa.colorForCategoria(cat),
-                        isSelected: filterCategoria == cat
-                    ) { filterCategoria = cat }
+    private var filterSection: some View {
+        VStack(spacing: 14) {
+            // Header sezione + menu preset
+            HStack {
+                Image(systemName: "slider.horizontal.3")
+                    .foregroundColor(.indigo)
+                Text("Filtri")
+                    .font(.headline)
+                Spacer()
+                Menu {
+                    Section("Periodo rapido") {
+                        Button("Ultimo mese")     { setRange(months: 1) }
+                        Button("Ultimi 3 mesi")   { setRange(months: 3) }
+                        Button("Ultimi 6 mesi")   { setRange(months: 6) }
+                        Button("Ultimo anno")     { setRange(months: 12) }
+                    }
+                    Section("Anno") {
+                        let currentYear = Calendar.current.component(.year, from: Date())
+                        ForEach((2022...currentYear).reversed(), id: \.self) { year in
+                            Button("\(year)") { setRangeYear(year) }
+                        }
+                    }
+                    Section {
+                        Button("Tutto") { setRangeAll() }
+                        Button("Reset filtri", role: .destructive) { resetFilters() }
+                    }
+                } label: {
+                    Label("Preset", systemImage: "ellipsis.circle")
+                        .font(.subheadline)
+                        .foregroundColor(.indigo)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+
+            // Date range
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Da")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    DatePicker("", selection: $dateFrom, in: ...dateTo, displayedComponents: .date)
+                        .labelsHidden()
+                        .environment(\.locale, Locale(identifier: "it_IT"))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("A")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    DatePicker("", selection: $dateTo, in: dateFrom..., displayedComponents: .date)
+                        .labelsHidden()
+                        .environment(\.locale, Locale(identifier: "it_IT"))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            // Multi-select categorie
+            Button {
+                showFilterCategoryPicker = true
+            } label: {
+                HStack {
+                    Image(systemName: "tag.fill")
+                        .foregroundColor(.indigo)
+                    Text(categoriesButtonLabel)
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .font(.subheadline)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.secondary.opacity(0.12))
+                )
+            }
+            .buttonStyle(.plain)
         }
-        .background(Color.systemBackground)
-        Divider()
-        } // VStack
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.systemBackground)
+                .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 1)
+        )
+    }
+
+    // MARK: - Filter Helpers
+
+    private func setRange(months: Int) {
+        let calendar = Calendar.current
+        let now = Date()
+        dateTo = now
+        dateFrom = calendar.date(byAdding: .month, value: -months, to: now) ?? now
+    }
+
+    private func setRangeYear(_ year: Int) {
+        let calendar = Calendar.current
+        let from = calendar.date(from: DateComponents(year: year, month: 1, day: 1)) ?? Date()
+        let to   = calendar.date(from: DateComponents(year: year, month: 12, day: 31)) ?? Date()
+        dateFrom = from
+        dateTo   = to
+    }
+
+    private func setRangeAll() {
+        let allDates = expenseManager.categorieSpese.map { $0.data }
+        dateFrom = allDates.min() ?? Date()
+        dateTo   = allDates.max() ?? Date()
+    }
+
+    private func resetFilters() {
+        let calendar = Calendar.current
+        let now = Date()
+        dateTo = now
+        dateFrom = calendar.date(byAdding: .month, value: -3, to: now) ?? now
+        selectedFilterCategories = Set(CategoriaSpesa.allCategorie)
     }
 
     // MARK: - List
@@ -169,12 +291,34 @@ struct ExpenseListView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 30)
                 } else {
-                    ForEach(filteredExpenses) { spesa in
-                        ExpenseRowFull(spesa: spesa, onDelete: {
-                            expenseManager.rimuoviSpesa(spesa)
-                        })
+                    ForEach(visibleExpenses) { spesa in
+                        HStack(spacing: 8) {
+                            if isSelecting {
+                                Image(systemName: selectedIDs.contains(spesa.id) ? "checkmark.circle.fill" : "circle")
+                                    .font(.title3)
+                                    .foregroundColor(selectedIDs.contains(spesa.id) ? .indigo : .secondary)
+                                    .transition(.opacity.combined(with: .move(edge: .leading)))
+                            }
+                            ExpenseRowFull(spesa: spesa, onDelete: {
+                                expenseManager.rimuoviSpesa(spesa)
+                            })
+                        }
                         .contentShape(Rectangle())
-                        .onTapGesture { spesaDaModificare = spesa }
+                        .onTapGesture {
+                            if isSelecting {
+                                toggleSelection(spesa.id)
+                            } else {
+                                spesaDaModificare = spesa
+                            }
+                        }
+                        #if os(iOS)
+                        .onLongPressGesture {
+                            if !isSelecting {
+                                withAnimation { isSelecting = true }
+                                selectedIDs.insert(spesa.id)
+                            }
+                        }
+                        #endif
                         #if os(macOS)
                         .contextMenu {
                             Button { spesaDaModificare = spesa } label: {
@@ -190,10 +334,28 @@ struct ExpenseListView: View {
                     }
                     #if os(iOS)
                     .onDelete { indexSet in
-                        indexSet.map { filteredExpenses[$0] }
+                        indexSet.map { visibleExpenses[$0] }
                             .forEach { expenseManager.rimuoviSpesa($0) }
                     }
                     #endif
+
+                    // Carica altri
+                    if hasMore {
+                        Button {
+                            withAnimation { visibleCount += pageSize }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Text("Carica altri \(min(pageSize, filteredExpenses.count - visibleCount))")
+                                    .fontWeight(.medium)
+                                Image(systemName: "chevron.down")
+                                    .font(.caption)
+                            }
+                            .foregroundColor(.indigo)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
         }
@@ -224,6 +386,74 @@ struct ExpenseListView: View {
                 Image(systemName: "arrow.up.arrow.down.circle")
             }
         }
+        ToolbarItem(placement: .automatic) {
+            Button(isSelecting ? "Annulla" : "Seleziona") {
+                withAnimation {
+                    if isSelecting {
+                        isSelecting = false
+                        selectedIDs.removeAll()
+                    } else {
+                        isSelecting = true
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Selection Action Bar
+
+    private var selectionActionBar: some View {
+        HStack(spacing: 12) {
+            Button {
+                if allVisibleSelected {
+                    selectedIDs.subtract(visibleExpenses.map { $0.id })
+                } else {
+                    selectedIDs.formUnion(visibleExpenses.map { $0.id })
+                }
+            } label: {
+                Image(systemName: allVisibleSelected ? "checkmark.square.fill" : "square")
+                    .font(.title3)
+                    .foregroundColor(.indigo)
+            }
+            .buttonStyle(.plain)
+
+            Text("\(selectedIDs.count) selezionate")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+
+            Spacer()
+
+            Button {
+                showCategoryPicker = true
+            } label: {
+                Label("Cambia categoria", systemImage: "tag.fill")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.indigo)
+            .disabled(selectedIDs.isEmpty)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial)
+        .overlay(Divider(), alignment: .top)
+    }
+
+    // MARK: - Helpers
+
+    private func toggleSelection(_ id: UUID) {
+        if selectedIDs.contains(id) {
+            selectedIDs.remove(id)
+        } else {
+            selectedIDs.insert(id)
+        }
+    }
+
+    private func applyBulkCategory(_ categoria: String) {
+        expenseManager.cambiaCategoriaMultiple(ids: selectedIDs, nuovaCategoria: categoria)
+        selectedIDs.removeAll()
+        showCategoryPicker = false
+        withAnimation { isSelecting = false }
     }
 }
 
@@ -317,6 +547,63 @@ struct ExpenseRowFull: View {
             #endif
         }
         .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Bulk Category Picker Sheet
+
+struct BulkCategoryPickerSheet: View {
+    let count: Int
+    let onSelect: (String) -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.indigo)
+                        Text("\(count) \(count == 1 ? "spesa selezionata" : "spese selezionate")")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                Section("Scegli la nuova categoria") {
+                    ForEach(CategoriaSpesa.allCategorie, id: \.self) { cat in
+                        Button {
+                            onSelect(cat)
+                        } label: {
+                            HStack(spacing: 12) {
+                                Circle()
+                                    .fill(CategoriaSpesa.colorForCategoria(cat))
+                                    .frame(width: 14, height: 14)
+                                Text(cat)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Cambia categoria")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Annulla", action: onCancel)
+                }
+            }
+        }
+        #if os(iOS)
+        .presentationDetents([.large])
+        #elseif os(macOS)
+        .frame(minWidth: 500, idealWidth: 550, minHeight: 600, idealHeight: 700)
+        #endif
     }
 }
 
