@@ -60,6 +60,7 @@ struct AddExpenseView: View {
     @State private var selectedColor = Color.blue
     @State private var data = Date()
     @State private var selectedCategoria = "Altro"
+    @State private var saveErrorMessage: String?
     @FocusState private var isFocused: Bool
 
     // MARK: - Init
@@ -76,7 +77,9 @@ struct AddExpenseView: View {
 
     /// Verifica se il form è valido
     private var isFormValid: Bool {
-        !nome.isEmpty && importoDouble != nil
+        let trimmedName = nome.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty, let importo = importoDouble else { return false }
+        return importo.isFinite && importo > 0
     }
     
     /// Converte il testo in Double (nil se non valido)
@@ -127,6 +130,17 @@ struct AddExpenseView: View {
                 selectedCategoria = s.categoria
             }
         }
+        .alert(
+            "Salvataggio non riuscito",
+            isPresented: Binding(
+                get: { saveErrorMessage != nil },
+                set: { if !$0 { saveErrorMessage = nil } }
+            )
+        ) {
+            Button("OK") { saveErrorMessage = nil }
+        } message: {
+            Text(saveErrorMessage ?? "Errore storage sconosciuto.")
+        }
     }
     
     // MARK: - Form Content
@@ -148,7 +162,7 @@ struct AddExpenseView: View {
                         .focused($isFocused)
                 }
                 
-                if let importo = importoDouble {
+                if let importo = importoDouble, importo.isFinite, importo > 0 {
                     Text("Importo: €\(String(format: "%.2f", importo))")
                         .font(.caption)
                         .foregroundColor(.green)
@@ -237,29 +251,40 @@ struct AddExpenseView: View {
     // MARK: - Methods
     
     private func salvaSpesa() {
-        guard let importo = importoDouble else { return }
+        let trimmedName = nome.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty,
+              let importo = importoDouble,
+              importo.isFinite,
+              importo > 0 else { return }
 
+        let saved: Bool
         if let originale = spesaDaModificare {
             let aggiornata = CategoriaSpesa(
                 id: originale.id,
-                nome: nome,
+                nome: trimmedName,
                 importo: importo,
                 colore: selectedColor,
                 data: data,
                 categoria: selectedCategoria
             )
-            expenseManager.aggiornaSpesa(aggiornata)
+            saved = expenseManager.aggiornaSpesa(aggiornata)
         } else {
             let nuova = CategoriaSpesa(
-                nome: nome,
+                nome: trimmedName,
                 importo: importo,
                 colore: selectedColor,
                 data: data,
                 categoria: selectedCategoria
             )
-            expenseManager.aggiungiSpesa(nuova)
+            saved = expenseManager.aggiungiSpesa(nuova)
         }
-        dismiss()
+
+        if saved {
+            dismiss()
+        } else {
+            saveErrorMessage = expenseManager.storageErrorMessage
+            expenseManager.dismissStorageError()
+        }
     }
 }
 

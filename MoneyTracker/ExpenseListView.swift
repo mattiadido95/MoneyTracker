@@ -26,6 +26,7 @@ struct ExpenseListView: View {
     @State private var isSelecting: Bool = false
     @State private var selectedIDs: Set<UUID> = []
     @State private var showCategoryPicker: Bool = false
+    @State private var operationErrorMessage: String?
 
     private let pageSize = 25
 
@@ -127,6 +128,17 @@ struct ExpenseListView: View {
         }
         .sheet(isPresented: $showFilterCategoryPicker) {
             MultiCategoryPickerSheet(selected: $selectedFilterCategories)
+        }
+        .alert(
+            "Operazione non riuscita",
+            isPresented: Binding(
+                get: { operationErrorMessage != nil },
+                set: { if !$0 { operationErrorMessage = nil } }
+            )
+        ) {
+            Button("OK") { operationErrorMessage = nil }
+        } message: {
+            Text(operationErrorMessage ?? "Errore storage sconosciuto.")
         }
         .onChange(of: dateFrom)                 { _, _ in visibleCount = pageSize }
         .onChange(of: dateTo)                   { _, _ in visibleCount = pageSize }
@@ -300,7 +312,7 @@ struct ExpenseListView: View {
                                     .transition(.opacity.combined(with: .move(edge: .leading)))
                             }
                             ExpenseRowFull(spesa: spesa, onDelete: {
-                                expenseManager.rimuoviSpesa(spesa)
+                                handleMutation(expenseManager.rimuoviSpesa(spesa))
                             })
                         }
                         .contentShape(Rectangle())
@@ -325,7 +337,7 @@ struct ExpenseListView: View {
                                 Label("Modifica", systemImage: "pencil")
                             }
                             Button(role: .destructive) {
-                                expenseManager.rimuoviSpesa(spesa)
+                                handleMutation(expenseManager.rimuoviSpesa(spesa))
                             } label: {
                                 Label("Elimina", systemImage: "trash")
                             }
@@ -334,8 +346,8 @@ struct ExpenseListView: View {
                     }
                     #if os(iOS)
                     .onDelete { indexSet in
-                        indexSet.map { visibleExpenses[$0] }
-                            .forEach { expenseManager.rimuoviSpesa($0) }
+                        let ids = Set(indexSet.map { visibleExpenses[$0].id })
+                        handleMutation(expenseManager.rimuoviSpese(ids: ids))
                     }
                     #endif
 
@@ -450,10 +462,27 @@ struct ExpenseListView: View {
     }
 
     private func applyBulkCategory(_ categoria: String) {
-        expenseManager.cambiaCategoriaMultiple(ids: selectedIDs, nuovaCategoria: categoria)
+        guard expenseManager.cambiaCategoriaMultiple(
+            ids: selectedIDs,
+            nuovaCategoria: categoria
+        ) else {
+            presentStorageError()
+            return
+        }
         selectedIDs.removeAll()
         showCategoryPicker = false
         withAnimation { isSelecting = false }
+    }
+
+    private func handleMutation(_ succeeded: Bool) {
+        guard !succeeded else { return }
+        presentStorageError()
+    }
+
+    private func presentStorageError() {
+        operationErrorMessage = expenseManager.storageErrorMessage
+            ?? "La modifica non è stata salvata."
+        expenseManager.dismissStorageError()
     }
 }
 
