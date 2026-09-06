@@ -41,84 +41,92 @@
 import SwiftUI
 import Combine
 
+@MainActor
 class ExpenseManager: ObservableObject {
     // MARK: - Published Properties
     
-    @Published var totaleMensile: Double = 0
-    @Published var totaleAnno: Double = 0
-    @Published var prossimaScadenza = "Nessuna"
-    @Published var numeroBolletteMese: Int = 0
-    @Published var mediaMensile: Double = 0
-    
-    // Flag per disabilitare auto-save (utile per preview/testing)
-    private var autoSaveEnabled: Bool = true
-    
-    @Published var categorieSpese: [CategoriaSpesa] = [] {
+    @Published private(set) var totaleMensile: Double = 0
+    @Published private(set) var totaleAnno: Double = 0
+    @Published private(set) var prossimaScadenza = "Nessuna"
+    @Published private(set) var numeroBolletteMese: Int = 0
+    @Published private(set) var mediaMensile: Double = 0
+    @Published private(set) var storageErrorMessage: String?
+    @Published private(set) var storageNoticeMessage: String?
+    @Published private(set) var canModifyData = false
+    @Published private(set) var hasLoadedStorage = false
+
+    @Published private(set) var categorieSpese: [CategoriaSpesa] = [] {
         didSet {
-            // Auto-save: salva automaticamente ogni volta che l'array cambia
-            if autoSaveEnabled {
-                salvaDati()
-            }
             calcolaTotali()
         }
     }
+
+    private let persistenceManager: PersistenceManager
+    private let persistenceEnabled: Bool
     
     // MARK: - Initialization
     
     /// Initializer standard (carica dati da persistenza)
-    init() {
-        print("🔵 ExpenseManager init() - START")
-        // Disabilita auto-save durante inizializzazione
-        self.autoSaveEnabled = false
-        print("🔵 Auto-save disabilitato temporaneamente")
-        
+    init(persistenceManager: PersistenceManager = .live) {
+        self.persistenceManager = persistenceManager
+        self.persistenceEnabled = true
         caricaDati()
-        print("🔵 Dati caricati")
-        
         calcolaTotali()
-        print("🔵 Totali calcolati")
-        
-        // Riabilita auto-save dopo inizializzazione completa
-        self.autoSaveEnabled = true
-        print("🔵 Auto-save riabilitato")
-        print("🔵 ExpenseManager init() - COMPLETE")
     }
     
     /// Initializer per preview/testing (usa dati mock, NO auto-save)
     init(mockData: Bool) {
-        print("🟣 ExpenseManager init(mockData: \(mockData)) - START")
-        self.autoSaveEnabled = false  // Disabilita auto-save per preview
+        self.persistenceManager = .live
+        self.persistenceEnabled = false
+        self.canModifyData = true
+        self.hasLoadedStorage = true
         if mockData {
             caricaDatiMockPerPreview()
         }
         calcolaTotali()
-        print("🟣 ExpenseManager init(mockData:) - COMPLETE")
     }
     
     // MARK: - Public Methods
     
     /// Aggiunge una nuova spesa alla lista
-    func aggiungiSpesa(_ spesa: CategoriaSpesa) {
-        categorieSpese.append(spesa)
-        // didSet verrà chiamato automaticamente → salva + ricalcola
+    @discardableResult
+    func aggiungiSpesa(_ spesa: CategoriaSpesa) -> Bool {
+        var updated = categorieSpese
+        updated.append(spesa)
+        return commit(updated)
+    }
+
+    /// Inserisce più spese con un solo salvataggio validato.
+    @discardableResult
+    func aggiungiSpese(_ spese: [CategoriaSpesa]) -> Bool {
+        guard !spese.isEmpty else { return true }
+        var updated = categorieSpese
+        updated.append(contentsOf: spese)
+        return commit(updated)
     }
     
     /// Rimuove una spesa dalla lista
-    func rimuoviSpesa(_ spesa: CategoriaSpesa) {
-        categorieSpese.removeAll { $0.id == spesa.id }
-        // didSet verrà chiamato automaticamente
+    @discardableResult
+    func rimuoviSpesa(_ spesa: CategoriaSpesa) -> Bool {
+        let updated = categorieSpese.filter { $0.id != spesa.id }
+        return commit(updated)
     }
 
     /// Aggiorna una spesa esistente (stesso ID)
-    func aggiornaSpesa(_ spesa: CategoriaSpesa) {
-        if let index = categorieSpese.firstIndex(where: { $0.id == spesa.id }) {
-            categorieSpese[index] = spesa
+    @discardableResult
+    func aggiornaSpesa(_ spesa: CategoriaSpesa) -> Bool {
+        guard let index = categorieSpese.firstIndex(where: { $0.id == spesa.id }) else {
+            return false
         }
+        var updated = categorieSpese
+        updated[index] = spesa
+        return commit(updated)
     }
 
     /// Cambia categoria a un insieme di spese in batch (un singolo didSet → un solo save)
-    func cambiaCategoriaMultiple(ids: Set<UUID>, nuovaCategoria: String) {
-        guard !ids.isEmpty else { return }
+    @discardableResult
+    func cambiaCategoriaMultiple(ids: Set<UUID>, nuovaCategoria: String) -> Bool {
+        guard !ids.isEmpty else { return true }
         let nuovoColore = CategoriaSpesa.colorForCategoria(nuovaCategoria)
         var updated = categorieSpese
         for i in updated.indices where ids.contains(updated[i].id) {
@@ -132,12 +140,23 @@ class ExpenseManager: ObservableObject {
                 categoria: nuovaCategoria
             )
         }
-        categorieSpese = updated
+        return commit(updated)
     }
 
     /// Rimuove spese agli indici specificati
-    func rimuoviSpese(at offsets: IndexSet) {
-        categorieSpese.remove(atOffsets: offsets)
+    @discardableResult
+    func rimuoviSpese(at offsets: IndexSet) -> Bool {
+        var updated = categorieSpese
+        updated.remove(atOffsets: offsets)
+        return commit(updated)
+    }
+
+    /// Rimuove più spese per ID con un unico salvataggio transazionale.
+    @discardableResult
+    func rimuoviSpese(ids: Set<UUID>) -> Bool {
+        guard !ids.isEmpty else { return true }
+        let updated = categorieSpese.filter { !ids.contains($0.id) }
+        return commit(updated)
     }
     
     // MARK: - Private Methods - Calculations
@@ -181,34 +200,55 @@ class ExpenseManager: ObservableObject {
     }
     
     // MARK: - Private Methods - Persistence
-    
-    /// Salva i dati su file JSON
-    private func salvaDati() {
+
+    /// Persiste prima il nuovo stato e lo pubblica soltanto dopo il successo.
+    /// In caso di errore conserva in memoria e su disco l'ultimo stato valido.
+    @discardableResult
+    private func commit(_ updatedExpenses: [CategoriaSpesa]) -> Bool {
+        guard canModifyData else {
+            storageErrorMessage = "Le modifiche sono bloccate perché lo storage non è stato caricato in modo sicuro. Riavvia l'app dopo aver verificato i file di backup."
+            return false
+        }
+
+        guard persistenceEnabled else {
+            categorieSpese = updatedExpenses
+            return true
+        }
+
         do {
-            try PersistenceManager.save(categorieSpese)
-            print("💾 Dati salvati automaticamente")
+            try persistenceManager.save(updatedExpenses)
+            categorieSpese = updatedExpenses
+            storageErrorMessage = nil
+            return true
+        } catch let error as PersistenceManager.PersistenceError {
+            if case .validationFailed = error {
+                storageErrorMessage = "Salvataggio annullato: \(error.localizedDescription) I dati correnti non sono stati modificati."
+            } else {
+                canModifyData = false
+                storageErrorMessage = "Salvataggio annullato: \(error.localizedDescription) Le modifiche sono state bloccate per proteggere l'ultima copia valida."
+            }
+            return false
         } catch {
-            print("❌ Errore nel salvataggio: \(error.localizedDescription)")
+            canModifyData = false
+            storageErrorMessage = "Salvataggio annullato: \(error.localizedDescription) Le modifiche sono state bloccate per proteggere l'ultima copia valida."
+            return false
         }
     }
-    
+
     /// Carica i dati dal file JSON
     private func caricaDati() {
         do {
-            let categorie = try PersistenceManager.load()
-            
-            // Carica i dati salvati (anche se vuoto)
-            categorieSpese = categorie
-            
-            if categorie.isEmpty {
-                print("ℹ️ Nessuna spesa presente. Inizia aggiungendone una!")
-            } else {
-                print("📂 Caricati \(categorie.count) record")
-            }
+            let result = try persistenceManager.load()
+            categorieSpese = result.expenses
+            storageNoticeMessage = result.userNotice
+            canModifyData = true
+            hasLoadedStorage = true
         } catch {
-            print("❌ Errore nel caricamento: \(error.localizedDescription)")
-            // Anche in caso di errore, inizia con array vuoto
+            // Non interpretare mai un errore come un archivio vuoto valido.
             categorieSpese = []
+            canModifyData = false
+            hasLoadedStorage = false
+            storageErrorMessage = error.localizedDescription
         }
     }
     
@@ -249,25 +289,21 @@ class ExpenseManager: ObservableObject {
             )
         ]
         
-        print("🎨 Caricati dati mock per preview (auto-save disabilitato)")
     }
-    
-    // MARK: - Debug Methods
-    
-    /// Resetta tutti i dati (utile per testing)
-    func resetDati() {
-        do {
-            try PersistenceManager.deleteAll()
-            categorieSpese = []
-            print("🗑️ Tutti i dati sono stati resettati")
-        } catch {
-            print("❌ Errore nella cancellazione: \(error.localizedDescription)")
-        }
+
+    // MARK: - Storage messages and diagnostics
+
+    func dismissStorageError() {
+        storageErrorMessage = nil
     }
-    
+
+    func dismissStorageNotice() {
+        storageNoticeMessage = nil
+    }
+
     /// Mostra informazioni sul file di persistenza
     func mostraInfoFile() {
-        print(PersistenceManager.fileInfo())
+        print(persistenceManager.fileInfo())
     }
     
     // MARK: - Export/Import Methods
@@ -275,6 +311,9 @@ class ExpenseManager: ObservableObject {
     /// Esporta i dati correnti in un file JSON
     /// - Returns: URL del file temporaneo da condividere
     func exportData() throws -> URL {
+        guard hasLoadedStorage else {
+            throw ExpenseManagerError.storageNotLoaded
+        }
         return try ExportImportManager.exportData(categorieSpese)
     }
     
@@ -284,17 +323,37 @@ class ExpenseManager: ObservableObject {
     func importData(from fileURL: URL) throws -> Int {
         let importedExpenses = try ExportImportManager.importData(from: fileURL)
         let countBefore = categorieSpese.count
-        
+
         // Merge con dati esistenti (evita duplicati per ID)
-        categorieSpese = ExportImportManager.mergeExpenses(
+        let mergedExpenses = ExportImportManager.mergeExpenses(
             imported: importedExpenses,
             existing: categorieSpese
         )
-        
-        let countAfter = categorieSpese.count
+
+        guard commit(mergedExpenses) else {
+            throw ExpenseManagerError.storageWriteFailed(
+                storageErrorMessage ?? "Errore storage sconosciuto."
+            )
+        }
+
+        let countAfter = mergedExpenses.count
         let addedCount = countAfter - countBefore
-        
+
         print("📥 Import completato: \(addedCount) nuove spese aggiunte")
         return addedCount
+    }
+}
+
+private enum ExpenseManagerError: LocalizedError {
+    case storageWriteFailed(String)
+    case storageNotLoaded
+
+    var errorDescription: String? {
+        switch self {
+        case .storageWriteFailed(let message):
+            return message
+        case .storageNotLoaded:
+            return "Lo storage non è stato caricato in modo sicuro; l'export è stato annullato per evitare di creare un archivio vuoto fuorviante."
+        }
     }
 }

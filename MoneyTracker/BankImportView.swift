@@ -551,8 +551,14 @@ struct BankImportView: View {
                 nuoveSpese.append(spesa)
             }
 
-            // Batch insert
-            expenseManager.categorieSpese.append(contentsOf: nuoveSpese)
+            // Batch insert: lo stato UI viene pubblicato solo dopo il commit su disco.
+            guard expenseManager.aggiungiSpese(nuoveSpese) else {
+                viewModel.errorMessage = expenseManager.storageErrorMessage
+                    ?? "Impossibile salvare le spese importate."
+                expenseManager.dismissStorageError()
+                viewModel.showErrorAlert = true
+                return
+            }
 
             // Messaggio di conferma dettagliato
             var msg = "✅ \(nuoveSpese.count) spese importate da \(bankImport.bankName)."

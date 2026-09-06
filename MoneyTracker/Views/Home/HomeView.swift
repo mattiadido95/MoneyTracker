@@ -307,6 +307,13 @@ struct HomeView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
+        .onAppear(perform: presentPendingStorageMessage)
+        .onChange(of: expenseManager.storageErrorMessage) { _, _ in
+            presentPendingStorageMessage()
+        }
+        .onChange(of: expenseManager.storageNoticeMessage) { _, _ in
+            presentPendingStorageMessage()
+        }
         .toolbar {
             #if os(iOS)
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -337,6 +344,7 @@ struct HomeView: View {
         AddExpenseButton {
             showingAddExpense = true
         }
+        .disabled(!expenseManager.canModifyData)
 
         // Su macOS, link espliciti a Lista e Statistiche (sostituisce la tab bar iOS)
         #if os(macOS)
@@ -397,30 +405,28 @@ struct HomeView: View {
                 Button(action: handleExport) {
                     Label("Esporta Dati", systemImage: "square.and.arrow.up")
                 }
+                .disabled(!expenseManager.hasLoadedStorage)
                 
                 Button(action: { showingImportPicker = true }) {
                     Label("Importa Dati", systemImage: "square.and.arrow.down")
                 }
+                .disabled(!expenseManager.canModifyData)
             }
             
             Section("Importazione Banca") {
                 Button(action: { showingBankImport = true }) {
                     Label("Importa Estratto Conto", systemImage: "doc.text.fill")
                 }
+                .disabled(!expenseManager.canModifyData)
             }
             
-            Section("Debug") {
+            Section("Storage") {
                 Button(action: {
                     expenseManager.mostraInfoFile()
                 }) {
                     Label("Info File", systemImage: "info.circle")
                 }
                 
-                Button(role: .destructive, action: {
-                    expenseManager.resetDati()
-                }) {
-                    Label("Reset Dati", systemImage: "trash")
-                }
             }
         } label: {
             Image(systemName: "ellipsis.circle")
@@ -428,6 +434,16 @@ struct HomeView: View {
     }
     
     // MARK: - Export/Import Methods
+
+    private func presentPendingStorageMessage() {
+        if let message = expenseManager.storageErrorMessage {
+            alertItem = .error(message)
+            expenseManager.dismissStorageError()
+        } else if let message = expenseManager.storageNoticeMessage {
+            alertItem = .success(message)
+            expenseManager.dismissStorageNotice()
+        }
+    }
     
     /// Gestisce l'export dei dati
     private func handleExport() {
@@ -464,7 +480,9 @@ struct HomeView: View {
             print("✅ Import completato: \(addedCount) spese aggiunte")
         } catch {
             // Mostra errore
-            alertItem = .error("Impossibile importare i dati: \(error.localizedDescription)")
+            let message = expenseManager.storageErrorMessage ?? error.localizedDescription
+            expenseManager.dismissStorageError()
+            alertItem = .error("Impossibile importare i dati: \(message)")
             print("❌ Errore import: \(error)")
         }
     }
@@ -867,5 +885,3 @@ struct DashboardCard<Content: View>: View {
         )
     }
 }
-
-
